@@ -1,0 +1,13 @@
+Import('*')
+
+# 添加源文件
+Source('KuiSau.cc')
+Source('KuiPacket128.cc')
+Source('KuiSauRun.cc')
+
+# 添加调试标志
+DebugFlag('KuiSau', "Matrix computation unit debug output")
+DebugFlag('KuiPacket128', "Matrix computation unit debug output")
+
+# 添加Python配置文件
+SimObject('KuiSau.py', sim_objects=['KuiSau'])
