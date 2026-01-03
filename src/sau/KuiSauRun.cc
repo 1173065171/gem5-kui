@@ -92,6 +92,7 @@ int32_t KuiSauSystolic::readAcc(unsigned r, unsigned c) const
     return m_ACC[r * m_cols + c];
 }
 
+// 调试用
 void KuiSauSystolic::display(std::ostream &os) const
 {
     os << "KuiSauSystolic(" << m_rows << "x" << m_cols << ") A (int8):\n";

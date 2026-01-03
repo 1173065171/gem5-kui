@@ -200,16 +200,16 @@ class KuiSau : public SimObject{
 	public:
 		// 构造函数
 		void startup() override;
-			KuiSau(const KuiSauParams &params) : SimObject(params),
-				port_KuiSau_sendto_mem(params.name + ".port_KuiSau_sendto_mem", this),
-				port_KuiSau_getfrm_mem(params.name + ".port_KuiSau_getfrm_mem", this),
-				csrAddrRange(params.csr_addr_range),
-				nextTickEvent([this]{sendOneKuiPkt();},name()),
-				clockDomain(params.clk_domain),
-				csrAccessCycles(params.csr_latency),
-				rngSeed(params.rng_seed),
-				rng(rngSeed == 0 ? 0xC001D00Du : rngSeed),
-				addrDist(0, Addr(0x10000 - 1))
+		KuiSau(const KuiSauParams &params) : SimObject(params),
+			port_KuiSau_sendto_mem(params.name + ".port_KuiSau_sendto_mem", this),
+			port_KuiSau_getfrm_mem(params.name + ".port_KuiSau_getfrm_mem", this),
+			csrAddrRange(params.csr_addr_range),
+			nextTickEvent([this]{sendOneKuiPkt();},name()),
+			clockDomain(params.clk_domain),
+			csrAccessCycles(params.csr_latency),
+			rngSeed(params.rng_seed),
+			rng(rngSeed == 0 ? 0xC001D00Du : rngSeed),
+			addrDist(0, Addr(0x10000 - 1))
 		{
 			// Check ClockDomain
 			fatal_if(!clockDomain, 

@@ -31,5 +31,5 @@ scons build/RISCV/gem5.opt -j$(nproc)
 ## 执行
 
 ```sh
-./build/RISCV/gem5.opt ./configs/tutorial/part1/kui_system_mem.py
+./build/RISCV/gem5.opt ./configs/tutorial/part1/kui_system_mem.py > output.log
 ```

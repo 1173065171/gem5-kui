@@ -1,0 +1,73 @@
+Global frequency set at 1000000000000 ticks per second
+recvRangeChange unimpl.
+KuiSau startup tick=0 interval(cycles)=10 ticks=10000
+gem5 Simulator System.  https://www.gem5.org
+gem5 is copyrighted software; use the --copyright option for details.
+
+gem5 version 25.0.0.0
+gem5 compiled Dec  8 2025 00:44:02
+gem5 started Jan  3 2026 21:46:19
+gem5 executing on zbn-win, pid 7300
+command line: ./build/RISCV/gem5.opt ./configs/tutorial/part1/kui_system_mem.py
+
+Beginning simulation!
+[KuiSau] tick=0 state=ReadA
+[KuiSau] Send Timing ReadA @0xf27d
+[KuiSau] tick=10000 state=ReadA
+[KuiSau] Send Timing ReadA @0xd5e
+[KuiSau] tick=20000 state=ReadA
+[KuiSau] Send Timing ReadA @0xf96c
+[KuiSau] tick=30000 state=ReadA
+[KuiSau] Send Timing ReadA @0xf21c
+[KuiSau] tick=40000 state=ReadA
+[KuiSau] tick=50000 state=ReadA
+[KuiSau] Send Timing ReadA @0x2f86
+[KuiSau] recvTimingResp tick=51001
+[KuiSau] ReadResp 128b value: 0x00000000000000000
+[KuiSau] tick=60000 state=ReadB
+[KuiSau] Send Timing ReadB @0xf2e0
+[KuiSau] recvTimingResp tick=66001
+[KuiSau] ReadResp 128b value: 0x00000000000000000
+[KuiSau] tick=70000 state=Compute
+[KuiSau] tick=80000 state=Compute
+[KuiSau] Compute done writeData128 prepared
+[KuiSau] recvTimingResp tick=81001
+[KuiSau] ReadResp 128b value: 0x00000000000000000
+[KuiSau] tick=90000 state=Write
+[KuiSau] Send Timing Write @0x2f86
+[KuiSau] recvTimingResp tick=96001
+[KuiSau] ReadResp 128b value: 0x00000000000000000
+[KuiSau] tick=100000 state=ReadB
+[KuiSau] Send Timing ReadB @0xe1ed
+[KuiSau] tick=110000 state=ReadB
+[KuiSau] Send Timing ReadB @0xf1af
+[KuiSau] recvTimingResp tick=111001
+[KuiSau] ReadResp 128b value: 0x00000000000000000
+[KuiSau] tick=120000 state=Compute
+[KuiSau] Compute done writeData128 prepared
+[KuiSau] recvTimingResp tick=126001
+[KuiSau] ReadResp 128b value: 0x00000000000000000
+[KuiSau] tick=130000 state=Write
+[KuiSau] Send Timing Write @0x2f86
+[KuiSau] tick=140000 state=ReadA
+[KuiSau] Send Timing ReadA @0x16e4
+[KuiSau] recvTimingResp tick=143001
+[KuiSau] ReadResp 128b value: 0x00000000000000000
+[KuiSau] tick=150000 state=ReadB
+[KuiSau] Send Timing ReadB @0xc023
+[KuiSau] recvTimingResp tick=156001
+[KuiSau] ReadResp 128b value: 0x00000000000000000
+[KuiSau] tick=160000 state=Compute
+[KuiSau] tick=170000 state=Compute
+[KuiSau] Compute done writeData128 prepared
+[KuiSau] recvTimingResp tick=171001
+[KuiSau] ReadResp 128b value: 0x00000000000000000
+[KuiSau] tick=180000 state=Write
+[KuiSau] Send Timing Write @0x16e4
+[KuiSau] recvTimingResp tick=188001
+[KuiSau] ReadResp 128b value: 0x00000000000000000
+[KuiSau] tick=190000 state=ReadB
+[KuiSau] Send Timing ReadB @0xf2d0
+[KuiSau] tick=200000 state=ReadB
+[KuiSau] Send Timing ReadB @0x1cb6
+Exiting @ tick 200000 because simulate() limit reached

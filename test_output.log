@@ -1,0 +1,16 @@
+ValueError: invalid literal for int() with base 0: '0x00000000:0x80000000'
+
+At:
+  src/python/m5/params.py(1074): __init__
+  src/python/m5/params.py(1190): __init__
+  configs/tutorial/part1/kui_system_csr_test.py(52): <module>
+  src/python/m5/main.py(682): main
+gem5 Simulator System.  https://www.gem5.org
+gem5 is copyrighted software; use the --copyright option for details.
+
+gem5 version 25.0.0.0
+gem5 compiled Dec  8 2025 00:44:02
+gem5 started Dec 10 2025 09:28:20
+gem5 executing on DESKTOP-VVNQOR7, pid 247869
+command line: ./build/RISCV/gem5.opt configs/tutorial/part1/kui_system_csr_test.py
+
