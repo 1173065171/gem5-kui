@@ -47,7 +47,6 @@ system.csrgen = CsrGen(
     clk_domain=system.clk_domain,
     interval=10,        # 每 10 个周期发送一个 CSR 指令
     max_requests=12,    # 发送 12 个指令后停止（6 对读写）
-    csr_addr=0x2F000000,  # CSR 寄存器地址
 )
 
 # 连接 CsrGen 的 CSR 端口到 KuiSau 的 CSR 响应端口

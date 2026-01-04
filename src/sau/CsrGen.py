@@ -16,9 +16,6 @@ class CsrGen(SimObject):
     clk_domain = Param.ClockDomain(Parent.any, "Clock domain")
     interval = Param.Cycles(10, "Cycles between CSR requests")
     max_requests = Param.UInt32(100, "Maximum number of CSR requests (0=unlimited)")
-
-    # CSR 地址
-    csr_addr = Param.Addr(0x2F000000, "CSR register address")
     
     # CSR RequestPort - 发送请求到 KuiSau 的 CSR ResponsePort
     csr_port = RequestPort("CSR request port")

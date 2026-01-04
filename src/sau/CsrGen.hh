@@ -59,13 +59,13 @@ class CsrGen : public SimObject
     unsigned requestCount = 0;
 
     // CSR 配置
-    const Addr csrAddr;        // CSR 寄存器地址
     const unsigned csrSize = 4; // CSR 大小固定为 4 字节
 
     // 预定义的 CSR 指令序列
     enum class CsrOpType { WRITE, READ };
     struct CsrOp {
         CsrOpType type;
+		Addr addr;
         uint32_t value; // 仅对 WRITE 有效
     };
     std::vector<CsrOp> csrOps;

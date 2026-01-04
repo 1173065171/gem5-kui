@@ -50,25 +50,25 @@ CsrGen::CsrGen(const CsrGenParams &params)
       tickEvent([this] { SendOneCsr(); }, name()),
       clockDomain(params.clk_domain),
       interval(params.interval),
-      maxRequests(params.max_requests),
-      csrAddr(params.csr_addr)
+      maxRequests(params.max_requests)
 {
     fatal_if(!clockDomain, "%s: ClockDomain must be set!", name());
 
     // 预定义 CSR 操作序列：写入几个值，然后读取
     csrOps = {
-        {CsrOpType::WRITE, 0x12345678},
-        {CsrOpType::READ, 0},
-        {CsrOpType::WRITE, 0xABCDEF00},
-        {CsrOpType::READ, 0},
-        {CsrOpType::WRITE, 0xDEADBEEF},
-        {CsrOpType::READ, 0},
+        {CsrOpType::WRITE, 0x2f000000, 0x12345678},
+        {CsrOpType::READ, 0x2f000000, 0},
+        {CsrOpType::WRITE, 0x2f000001, 0x34567812},
+        {CsrOpType::READ, 0x2f000001, 0},
+        {CsrOpType::WRITE, 0x2f000002, 0x56781234},
+        {CsrOpType::READ, 0x2f000002, 0},
+		{CsrOpType::WRITE, 0x2f000003, 0x78123456},
+        {CsrOpType::READ, 0x2f000003, 0},
     };
 
     inform("%s created:", name());
     inform("  Clock period: %lld ticks", getClockPeriod());
     inform("  Interval: %d cycles", interval);
-    inform("  CSR Address: 0x%x", csrAddr);
     inform("  Max requests: %d", maxRequests);
     inform("  Predefined ops: %d", csrOps.size());
 }
@@ -107,25 +107,26 @@ CsrGen::SendOneCsr()
     }
 
     const CsrOp &op = csrOps[currentOpIndex];
+    std::cout << "[CsrGen] currentOpIndex=" << currentOpIndex << std::endl;
     currentOpIndex++;
 
     // 创建 CSR 请求
     const Request::Flags req_flags = Request::PHYSICAL;
     const RequestorID req_id = 2; // 使用不同的 requestor ID
 
-    RequestPtr req = std::make_shared<Request>(csrAddr, csrSize, req_flags, req_id);
+    RequestPtr req = std::make_shared<Request>(op.addr, csrSize, req_flags, req_id);
     PacketPtr pkt = nullptr;
 
     if (op.type == CsrOpType::WRITE) {
         pkt = Packet::createWrite(req);
         pkt->allocate();
         pkt->setLE<uint32_t>(op.value);
-        std::cout << "[CsrGen] Sending CSR Write @0x" << std::hex << csrAddr 
+        std::cout << "[CsrGen] Sending CSR Write @0x" << std::hex << op.addr 
                   << " value=0x" << op.value << std::dec << std::endl;
     } else {
         pkt = Packet::createRead(req);
         pkt->allocate();
-        std::cout << "[CsrGen] Sending CSR Read @0x" << std::hex << csrAddr 
+        std::cout << "[CsrGen] Sending CSR Read @0x" << std::hex << op.addr 
                   << std::dec << std::endl;
     }
 
