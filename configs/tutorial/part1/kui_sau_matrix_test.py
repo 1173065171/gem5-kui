@@ -64,7 +64,7 @@ class SauTestSystem(System):
         # SAU模块
         self.seu = KuiSau(
             clk_domain=self.clk_domain,
-            csr_addr_range=AddrRange(0x2f000000, 0x2f000100),
+            csr_addr_range=AddrRange(0x2f000000, size=0x1000),
             csr_latency=Cycles(5),
             rng_seed=42
         )

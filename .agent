@@ -1,0 +1,1128 @@
+# Repository Agent Notes
+
+This repository is a gem5 fork on the `kui-dev` line. The local work is focused
+on integrating a KuiLoong NPU SAU (Systolic Array Unit) model into gem5.
+
+## Current Focus
+
+- Main gem5 SimObject work lives in `src/sau`.
+- The active gem5 model is `KuiSau`, with a supporting CSR traffic generator
+  `CsrGen` and deterministic golden driver `SauGoldenGen`.
+- `src/sau/SConscript` is the build entry for the current gem5-facing SAU code.
+- `configs/tutorial/part1/kui_system_mem.py` is the simple memory-connectivity
+  smoke test used in `docs/my_gem5.md`.
+- `configs/tutorial/part1/kui_sau_golden_test.py` is the first deterministic
+  SAU functional-output test.
+- `configs/tutorial/part1/kui_sau_golden_add_test.py` covers a deterministic
+  matrix-add output vector using `SauGoldenGen(test_case="add")`.
+- `configs/tutorial/part1/kui_sau_golden_shift_test.py` covers a deterministic
+  shift-mode GEMM vector using `SauGoldenGen(test_case="gemm_shift")`.
+- `configs/tutorial/part1/kui_sau_golden_dequant_test.py` covers a deterministic
+  cutbit/dequantization vector using `SauGoldenGen(test_case="gemm_dequant")`;
+  the golden run now passes.
+- `configs/tutorial/part1/kui_sau_golden_dequant_negative_test.py` covers a
+  deterministic negative cutbit/dequantization vector using
+  `SauGoldenGen(test_case="gemm_dequant_negative")`; the golden run now passes.
+- `configs/tutorial/part1/kui_sau_golden_dequant_int16_test.py` covers a
+  deterministic int16 cutbit/dequantization vector using
+  `SauGoldenGen(test_case="gemm_dequant_int16")`; the golden run now passes.
+- `configs/tutorial/part1/kui_sau_golden_pointwise_test.py` covers a
+  deterministic pointwise-convolution vector using
+  `SauGoldenGen(test_case="pointwise")`.
+- `configs/tutorial/part1/kui_sau_golden_pointwise_dequant_mixed_test.py`
+  covers a deterministic pointwise `work_mode=2` mixed-sign dequantization
+  vector using `SauGoldenGen(test_case="pointwise_dequant_mixed")`.
+- `configs/tutorial/part1/kui_sau_golden_transpose_test.py` covers a
+  deterministic output-transpose vector using
+  `SauGoldenGen(test_case="gemm_out_transpose")`.
+- `configs/tutorial/part1/kui_sau_golden_normal_conv_test.py` covers a
+  deterministic normal-convolution vector using
+  `SauGoldenGen(test_case="normal_conv")`; the golden run now passes.
+- `configs/tutorial/part1/kui_sau_golden_normal_conv_rich_test.py` covers a
+  deterministic normal-convolution rich-data vector with multiple signed A lanes
+  and distinct signed B kernel rows using
+  `SauGoldenGen(test_case="normal_conv_rich")`.
+- `configs/tutorial/part1/kui_sau_golden_normal_conv_shift_test.py` covers a
+  deterministic normal-convolution `shift_mode=1` int16 output-packing vector
+  using `SauGoldenGen(test_case="normal_conv_shift")`.
+- `configs/tutorial/part1/kui_sau_golden_normal_conv_stride_test.py` covers a
+  deterministic normal-convolution `stride=1` output-row selection vector using
+  `SauGoldenGen(test_case="normal_conv_stride")`.
+- `configs/tutorial/part1/kui_sau_golden_normal_conv_stride_shift_test.py`
+  covers a deterministic normal-convolution combined `stride=1` plus
+  `shift_mode=1` int16 output-packing vector using
+  `SauGoldenGen(test_case="normal_conv_stride_shift")`.
+- `configs/tutorial/part1/kui_sau_golden_normal_conv_dequant_mixed_test.py`
+  covers a deterministic normal-convolution `work_mode=2` mixed-sign
+  dequantization vector using
+  `SauGoldenGen(test_case="normal_conv_dequant_mixed")`.
+- `configs/tutorial/part1/kui_sau_golden_normal_conv_stride_dequant_mixed_test.py`
+  covers a deterministic normal-convolution combined `stride=1` plus
+  `work_mode=2` mixed-sign dequantization vector using
+  `SauGoldenGen(test_case="normal_conv_stride_dequant_mixed")`.
+- `configs/tutorial/part1/kui_sau_golden_normal_conv_stride_shift_dequant_mixed_test.py`
+  covers a deterministic normal-convolution combined `stride=1`,
+  `shift_mode=1`, and `work_mode=2` mixed-sign dequantization vector using
+  `SauGoldenGen(test_case="normal_conv_stride_shift_dequant_mixed")`.
+- `configs/tutorial/part1/kui_sau_golden_depthwise_conv_test.py` covers a
+  deterministic depthwise-convolution vector using
+  `SauGoldenGen(test_case="depthwise_conv")`; the golden run now passes.
+- `configs/tutorial/part1/kui_sau_golden_depthwise_conv_rich_test.py` covers a
+  deterministic depthwise-convolution rich-data vector with multiple signed A
+  lanes and distinct signed B kernel rows using
+  `SauGoldenGen(test_case="depthwise_conv_rich")`.
+- `configs/tutorial/part1/kui_sau_golden_depthwise_conv_shift_test.py` covers a
+  deterministic depthwise-convolution `shift_mode=1` int16 output-packing vector
+  using `SauGoldenGen(test_case="depthwise_conv_shift")`.
+- `configs/tutorial/part1/kui_sau_golden_depthwise_conv_stride_test.py` covers
+  a deterministic depthwise-convolution `stride=1` output-row selection vector
+  using `SauGoldenGen(test_case="depthwise_conv_stride")`.
+- `configs/tutorial/part1/kui_sau_golden_depthwise_conv_stride_shift_test.py`
+  covers a deterministic depthwise-convolution combined `stride=1` plus
+  `shift_mode=1` int16 output-packing vector using
+  `SauGoldenGen(test_case="depthwise_conv_stride_shift")`.
+- `configs/tutorial/part1/kui_sau_golden_depthwise_conv_dequant_mixed_test.py`
+  covers a deterministic depthwise-convolution `work_mode=2` mixed-sign
+  dequantization vector using
+  `SauGoldenGen(test_case="depthwise_conv_dequant_mixed")`.
+- `configs/tutorial/part1/kui_sau_golden_depthwise_conv_stride_dequant_mixed_test.py`
+  covers a deterministic depthwise-convolution combined `stride=1` plus
+  `work_mode=2` mixed-sign dequantization vector using
+  `SauGoldenGen(test_case="depthwise_conv_stride_dequant_mixed")`.
+- `configs/tutorial/part1/kui_sau_golden_depthwise_conv_stride_shift_dequant_mixed_test.py`
+  covers a deterministic depthwise-convolution combined `stride=1`,
+  `shift_mode=1`, and `work_mode=2` mixed-sign dequantization vector using
+  `SauGoldenGen(test_case="depthwise_conv_stride_shift_dequant_mixed")`.
+- `configs/tutorial/part1/kui_sau_golden_retain_test.py` covers a staged
+  two-instruction output-retain vector using
+  `SauGoldenGen(test_case="gemm_retain")`; the golden run now passes.
+- `configs/tutorial/part1/kui_sau_golden_transpose_retain_test.py` covers a
+  deterministic combined output-transpose plus retain vector using
+  `SauGoldenGen(test_case="gemm_transpose_retain")`; the golden run now passes.
+- The active conversion plan is recorded in
+  `docs/SAU_Gem5_Conversion_Plan.md`.
+- The current software/RTL/gem5 mapping is recorded in
+  `docs/SAU_Gem5_Design_Mapping.md`.
+
+## Existing SAU Implementation
+
+- `src/sau/KuiSau.py`: Python SimObject definition.
+- `src/sau/KuiSau.hh` and `src/sau/KuiSau.cc`: C++ SimObject, ports, CSR decode,
+  memory requests, and timing events.
+- `src/sau/KuiSauRun.hh` and `src/sau/KuiSauRun.cc`: lightweight systolic-array
+  helper used by the current random ReadA/ReadB/Compute/Write path.
+- `src/sau/CsrGen.py`, `src/sau/CsrGen.hh`, and `src/sau/CsrGen.cc`: fixed CSR
+  request generator for integration testing.
+- `src/sau/SauGoldenGen.py`, `src/sau/SauGoldenGen.hh`, and
+`src/sau/SauGoldenGen.cc`: deterministic memory/CSR driver that checks
+  parameterized 16x16 output vectors (`gemm`, `add`, `gemm_shift`,
+  `gemm_dequant`, `gemm_dequant_negative`, `gemm_dequant_int16`,
+  `pointwise`, `pointwise_dequant_mixed`, `gemm_out_transpose`,
+  `normal_conv`, `normal_conv_rich`, `normal_conv_shift`, `normal_conv_stride`,
+  `normal_conv_stride_shift`, `normal_conv_dequant_mixed`,
+  `normal_conv_stride_dequant_mixed`,
+  `normal_conv_stride_shift_dequant_mixed`,
+  `depthwise_conv`, `depthwise_conv_rich`, `depthwise_conv_shift`,
+  `depthwise_conv_stride`,
+  `depthwise_conv_stride_shift`,
+  `depthwise_conv_dequant_mixed`, `depthwise_conv_stride_dequant_mixed`,
+  `depthwise_conv_stride_shift_dequant_mixed`,
+  `gemm_retain`, `gemm_transpose_retain`).
+
+The current `KuiSau::startup()` schedules a standalone random memory FSM through
+`sendOneKuiPkt()` only when `enable_random_traffic=True`. CSR-triggered
+execution exists through `processCsrPacket()` and `executeFlow()`. The flow now
+waits for tagged A/B/C memory responses before compute and waits for final D
+write response before completing the flow. The random memory FSM has an
+in-flight guard and advances from untagged read responses, so it remains a
+connectivity smoke path without flooding memory with repeated reads. `KuiSau`
+registers a proper gem5 memory requestor id through `System`; avoid reintroducing
+fixed numeric requestor ids for memory traffic.
+
+The functional data path has started converging toward `SAU.py`: A/B memory
+responses are treated as byte lanes, C is packed as software-style `uint16`
+bias data, preprocessing includes `fliplr`, int8 sign extension, shift-mode
+int16 view/reshape, convolution A shift, depthwise B masking, transpose mode,
+and fixed A transpose before systolic compute. Bias add, dequant saturation,
+output transpose, and output byte packing have also been ported closer to the
+software model. Deterministic GEMM, matrix-add, shift-mode GEMM,
+positive/negative/int16 cutbit/dequant GEMM, pointwise-convolution+bias,
+pointwise mixed-sign dequant, output-transpose,
+normal-convolution, normal-convolution shift-mode int16 output packing,
+normal-convolution rich signed-data,
+normal-convolution stride-mode output row selection,
+normal-convolution combined stride+shift int16 output packing,
+normal-convolution mixed-sign dequant,
+normal-convolution combined stride+dequant,
+normal-convolution combined stride+shift+dequant,
+depthwise-convolution, depthwise-convolution shift-mode int16 output packing,
+depthwise-convolution rich signed-data,
+depthwise-convolution stride-mode output row selection,
+depthwise-convolution combined stride+shift int16 output packing,
+depthwise-convolution mixed-sign dequant,
+depthwise-convolution combined stride+dequant,
+depthwise-convolution combined stride+shift+dequant,
+output-retain, and
+output-transpose-retain tests now pass. The model no longer resets `D_matrix` on every start
+write; this preserves the accumulated D state needed by `flow_mode == 2/3`
+until `updateOutputMatrix()` decides whether to clear it. A/B/C reads are issued
+as tagged per-segment requests using the software
+`base + i * step + j * unitSize` pattern and reassembled by segment index. D
+writeback is tagged per output row and busy clears only after all write
+responses. Basic gem5 stats now count CSR reads/writes, flow starts/completions,
+tagged read/write segments, busy ticks, per-kind tagged address summaries
+(`first`, `last`, `sum`, `xor`) for MatrixA, MatrixB, VectorC, and OutputD, and
+a global tagged request summary including an order-sensitive 53-bit hash.
+Full functional equivalence is still not proven; the next major gaps are
+additional normal/depthwise modes and data shapes, richer mixed-mode
+shift/dequant variants, tighter D_wstrb coverage, and broader RTL
+request-trace validation.
+
+The latest completed slice adds normal/depthwise convolution golden vectors.
+`normal_conv` uses `conv_kernel=2`, `register_mode=0`, `shift_mode=0`, one
+nonzero A lane, zero C/bias data, and the fixed B row pattern; its expected D
+bytes have only row 0 populated with `0..15` after SAU.py-style output packing.
+`depthwise_conv` uses the same A/C setup with `register_mode=2`; its expected D
+bytes have only the last byte of row 0 set to 15 after the DW B-column mask and
+output packing.
+`docker exec -w /gem5/gem5-kui gem5-dev scons build/RISCV/gem5.opt -j2`
+passed after adding these cases.
+`docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_normal_conv ./configs/tutorial/part1/kui_sau_golden_normal_conv_test.py`
+and
+`docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_depthwise_conv ./configs/tutorial/part1/kui_sau_golden_depthwise_conv_test.py`
+passed. Both stats shapes show 8 CSR writes, 11 CSR reads, 1 flow
+start/completion, 10 read segments (4 A + 4 B + 2 C), 16 D write segments, and
+177001 busy ticks.
+
+Latest completed slice: normal/depthwise rich-data convolution now passes.
+`SauGoldenGen(test_case="normal_conv_rich")` and
+`SauGoldenGen(test_case="depthwise_conv_rich")` both use `conv_kernel=2`,
+`shift_mode=0`, zero C data, multiple signed A lanes across the six conv read
+rows, and distinct signed B kernel rows. The normal-conv vector produces
+SAU.py-derived mixed positive/negative packed bytes across output rows 0..4,
+proving more than a one-hot A-to-B-row selection. The depthwise vector reuses the
+same A/B data under `register_mode=2` and proves the DW B-column mask keeps five
+output rows while zeroing the other packed columns. Verified commands:
+`docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_normal_conv_rich ./configs/tutorial/part1/kui_sau_golden_normal_conv_rich_test.py`
+and
+`docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_depthwise_conv_rich ./configs/tutorial/part1/kui_sau_golden_depthwise_conv_rich_test.py`.
+Both rich-data stats: 8 CSR writes, 11 CSR reads, 1 flow start/completion,
+10 read segments, 16 D write segments, and 177001 busy ticks.
+
+Latest completed slice: tagged address summary stats now exist and are verified
+on the normal/depthwise rich-data conv vectors. `KuiSau` records first, last,
+sum, and XOR address summaries for MatrixA reads, MatrixB reads, VectorC reads,
+and OutputD writes. The verified rich-data conv address sequence is:
+A reads `0x20000000..0x20000030` every 16 bytes, B reads
+`0x20001000..0x20001030`, C reads `0x20002000` and `0x20002010`, and D writes
+`0x20003000..0x200030f0` every 16 bytes. Verified commands:
+`docker exec -w /gem5/gem5-kui gem5-dev scons build/RISCV/gem5.opt -j2`,
+`docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_normal_conv_rich ./configs/tutorial/part1/kui_sau_golden_normal_conv_rich_test.py`,
+and
+`docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_depthwise_conv_rich ./configs/tutorial/part1/kui_sau_golden_depthwise_conv_rich_test.py`.
+Both runs matched expected stats summaries: A first/last/sum/xor
+`536870912/536870960/2147483744/0`, B
+`536875008/536875056/2147500128/0`, C
+`536879104/536879120/1073758224/16`, and D
+`536883200/536883440/8590133120/0`.
+
+Latest completed slice: tagged address summary stats now have representative
+cross-mode coverage beyond the rich conv pair. Re-ran and passed
+`normal_conv_stride`, `normal_conv_stride_shift`, `pointwise`, and
+`gemm_shift` into fresh outdirs:
+`m5out/sau_addr_normal_conv_stride`,
+`m5out/sau_addr_normal_conv_stride_shift`,
+`m5out/sau_addr_pointwise`, and `m5out/sau_addr_gemm_shift`.
+The stats matched computed request-address summaries from
+`issueFlowReads(base + i*step + j*16)` and
+`D_address + row*D_step`. Key first/last/sum/xor summaries:
+normal-conv stride A `536870912/536870976/3221225664/96`;
+normal-conv stride+shift A `536870912/536871024/6442451616/0`;
+pointwise A/B `536870912/536871152/8589936512/0` and
+`536875008/536875248/8590002048/0`; GEMM shift A
+`536870912/536871408/17179877120/0`, B
+`536875008/536875248/8590002048/0`, C `0/0/0/0`, and shift-mode D
+`536883200/536883696/17180270336/0`.
+
+Latest completed slice: first RTL `mem_addr.sv` formula pass is recorded.
+`SA_CORE.sv` sets `BASE_ADDR=0x20000000`, matching gem5 golden memory. RTL
+`csr.sv` maps word 2 horizontal=B and vertical=A, and word 3 bias=C and
+output=D, so the logical tags line up after renaming. RTL output D addressing
+matches the current gem5 summary shape for default `x_step=1` and
+`channel_step=1`, including shift-mode adjacent `+16` rows. Known request-trace
+gaps before claiming RTL equivalence: RTL only issues bias/C reads when
+`pe_work_mode == SA_pkg::CONV` (`work_mode=1`), while `SAU.py` and gem5 enable
+C for normal/DW conv regardless of work mode; and RTL scheduler ordering may
+read horizontal/B before vertical/A, while gem5 currently batches tagged
+A/B/C requests by kind.
+
+Latest completed slice: C/bias request gating is now selectable. `KuiSau.py`
+adds `rtl_c_read_gate` (default `False`), and `KuiSau` uses it to keep default
+functional runs aligned with `SAU.py` while allowing RTL-style C/bias reads only
+when `work_mode == 1`. Added
+`configs/tutorial/part1/kui_sau_golden_normal_conv_stride_rtl_trace_test.py`
+as a trace-oriented normal-conv stride check. Verified build:
+`docker exec -w /gem5/gem5-kui gem5-dev scons build/RISCV/gem5.opt -j2`.
+Default run
+`m5out/sau_addr_normal_conv_stride_default_cgate` still reads C and reports
+12 read segments with C first/last/sum/xor
+`536879104/536879120/1073758224/16`. RTL-gated run
+`m5out/sau_addr_normal_conv_stride_rtl_cgate` passes the same D output check,
+reports 10 read segments, and reports C first/last/sum/xor `0/0/0/0`. A/B/D
+summaries match between both runs.
+
+Latest completed slice: RTL-gated representative address-summary coverage has
+been widened. Added trace configs for `normal_conv_stride_shift`, `pointwise`,
+and `gemm_shift`:
+`configs/tutorial/part1/kui_sau_golden_normal_conv_stride_shift_rtl_trace_test.py`,
+`configs/tutorial/part1/kui_sau_golden_pointwise_rtl_trace_test.py`, and
+`configs/tutorial/part1/kui_sau_golden_shift_rtl_trace_test.py`. Verified runs:
+`m5out/sau_addr_normal_conv_stride_shift_rtl_cgate`,
+`m5out/sau_addr_pointwise_rtl_cgate`, and
+`m5out/sau_addr_gemm_shift_rtl_cgate`. All three D output checks passed and the
+stats matched expected summaries. Stride+shift RTL-gated drops C to `0/0/0/0`
+and reports 16 read segments. Pointwise `work_mode=1` keeps C at
+`536879104/536879120/1073758224/16` and reports 34 read segments. GEMM shift
+keeps C at `0/0/0/0` and reports 48 read segments. Their A/B/D summaries match
+the previously verified per-kind formulas.
+
+Latest completed slice: global ordered trace stats are now recorded and
+verified for the RTL-gated representative set. `KuiSau` records
+`flowTraceRequests`, `flowTraceAddrFirst`, `flowTraceAddrLast`,
+`flowTraceAddrSum`, `flowTraceAddrXor`, and `flowTraceOrderHash`. The order hash
+is FNV-style over request kind plus address and is masked to 53 bits so gem5
+stats output remains exactly comparable. Verified after rebuilding:
+`m5out/sau_order_normal_conv_stride_shift_rtl_cgate` reports
+requests/first/last/sum/xor/hash =
+`48/536870912/536883696/25770222080/0/5719151375192195`;
+`m5out/sau_order_pointwise_rtl_cgate` reports
+`50/536870912/536883440/26843829904/16/5827402699122387`; and
+`m5out/sau_order_gemm_shift_rtl_cgate` reports
+`80/536870912/536883696/42950149504/0/3684773384763523`.
+These values matched an independent address-sequence checker.
+
+Latest completed slice: a reusable trace-summary checker now exists at
+`util/sau_trace_summary.py`. It uses the same request-kind values and 53-bit
+order hash as `KuiSau`, knows the RTL-gated representative cases
+(`normal_conv_stride`, `normal_conv_stride_shift`, `pointwise`, and
+`gemm_shift`), checks gem5 `stats.txt`, and can summarize RTL CSV/text traces.
+For RTL CSV, either provide explicit `kind/source` plus `addr`, or provide
+`sram_rd_enable`, `sram_wr_enable`, `sram_mem_addr`, `input_switch`, and
+`bias_rd_valid`; the tool maps RTL vertical=A, horizontal=B, bias=C, writes=D.
+Verified commands:
+`python3 -m py_compile util/sau_trace_summary.py`,
+`python3 util/sau_trace_summary.py --case normal_conv_stride --gem5-stats m5out/sau_order_normal_conv_stride_rtl_cgate/stats.txt`,
+`python3 util/sau_trace_summary.py --case normal_conv_stride_shift --gem5-stats m5out/sau_order_normal_conv_stride_shift_rtl_cgate/stats.txt`,
+`python3 util/sau_trace_summary.py --case pointwise --gem5-stats m5out/sau_order_pointwise_rtl_cgate/stats.txt`, and
+`python3 util/sau_trace_summary.py --case gemm_shift --gem5-stats m5out/sau_order_gemm_shift_rtl_cgate/stats.txt`.
+
+Latest completed slice: RTL trace capture is now documented and has a
+non-invasive bind monitor. External hardware inspection found the mikui DMA VCS
+case under `/home/zbn/code/npu_lpnpu/sim/vcs` and the SAU `mem_addr` hierarchy
+`top_mikui_dma_tb.dut_mikui_inst.SAU_1_inst.mem_addr_inst`. Added
+`util/sau_mem_addr_trace_bind.sv`, which binds to module `mem_addr` and emits
+CSV rows `cycle,kind,addr,sram_rd_enable,sram_wr_enable,input_switch_bit,bias_rd_valid`.
+Added `util/sau_prepare_rtl_trace_filelist.sh`, which copies the external
+`case_mikui_dma/verilog.f` into `build/sau_trace/mikui_dma_verilog_with_trace.f`
+and appends the monitor without editing the hardware repo. Added
+`docs/SAU_RTL_Trace_Capture.md` with the make override flow. Static/smoke checks
+passed: `sh -n util/sau_prepare_rtl_trace_filelist.sh`,
+`./util/sau_prepare_rtl_trace_filelist.sh`, tailing the generated filelist, and
+`python3 util/sau_trace_summary.py --rtl-trace /tmp/sau_monitor_sample.csv`.
+Verilator lint of the extracted full `mem_addr.sv` is blocked by unsupported
+localparams inside the upstream `SA_pkg.sv`, but a minimal stub lint of
+`util/sau_mem_addr_trace_bind.sv` passed with
+`verilator --lint-only -sv /tmp/sau_mem_addr_stub.sv util/sau_mem_addr_trace_bind.sv`.
+
+Latest completed slice: RTL trace helper defaults now point at a known existing
+SAU testcase instead of the missing `lkssfull/1_norun` pair.
+`util/sau_prepare_rtl_trace_filelist.sh` defaults to
+`REGRESS_NAME=lkssfull_sau_stdconv` and
+`TESTCASE=10_sau_regress_INT16_SAU_NORMCONV_TEST_ID_0`, checks the testcase
+directory, and prints `DW_HOME=/home/ic/synopsys/syn/syn/T-2022.03-SP2/` plus
+`VCS_TIMESCALE=1ns/100ps` for the external VCS makefile. The first external VCS
+run was intentionally stopped during elaboration when the user left for the day.
+The next run completed: `simv` used
+`lkssfull_sau_stdconv/10_sau_regress_INT16_SAU_NORMCONV_TEST_ID_0`, scoreboard
+reported `ALL TESTS PASSED`, NPU done asserted, and `$finish` happened at
+`6036925 ns`. It generated
+`/home/zbn/code/npu_lpnpu/sim/vcs/build/mikui_dma/sau_mem_addr_trace.csv`
+with 3569 CSV lines (header plus 3568 requests). RTL per-kind request counts:
+A=2032, B=992, C=32, D=512. Summary values:
+A first/last/sum/xor `537029632/537022528/1091228802304/0`;
+B `537022560/537030576/532730306816/15360`;
+C `537022480/537022512/17184719872/0`;
+D `537013280/537021456/274952892416/0`;
+global requests/first/last/sum/xor/hash
+`3568/537022560/537021456/1916096721408/15360/8164653382730703`.
+Revalidated after this default update:
+`sh -n util/sau_prepare_rtl_trace_filelist.sh`,
+`./util/sau_prepare_rtl_trace_filelist.sh`, tailing
+`build/sau_trace/mikui_dma_verilog_with_trace.f`,
+`python3 -m py_compile util/sau_trace_summary.py`,
+`verilator --lint-only -sv /tmp/sau_mem_addr_stub.sv util/sau_mem_addr_trace_bind.sv`,
+the four `util/sau_trace_summary.py --case ... --gem5-stats ...` checks for
+the RTL-gated representative runs, and both sample RTL CSV parse modes
+(`/tmp/sau_monitor_sample.csv` and `/tmp/sau_monitor_infer_sample.csv`).
+
+Latest completed slice: per-kind request counts are now part of both gem5 stats
+and the trace summary checker. `KuiSau` records `flowReadARequests`,
+`flowReadBRequests`, `flowReadCRequests`, and `flowWriteDRequests`.
+`util/sau_trace_summary.py` prints and compares those fields, and now has a
+fixed external RTL smoke case named `lkssfull_sau_stdconv_10`. Verified:
+`python3 util/sau_trace_summary.py --case lkssfull_sau_stdconv_10 --rtl-trace /home/zbn/code/npu_lpnpu/sim/vcs/build/mikui_dma/sau_mem_addr_trace.csv`,
+`docker exec -w /gem5/gem5-kui gem5-dev scons build/RISCV/gem5.opt -j2`, reruns
+of the four RTL-gated gem5 representative cases into `m5out/sau_order_*`, and
+their `util/sau_trace_summary.py --case ... --gem5-stats ...` checks. The four
+representative gem5 counts are normal-conv stride A/B/C/D `6/4/0/16`,
+normal-conv stride+shift `12/4/0/32`, pointwise `16/16/2/16`, and gemm-shift
+`32/16/0/32`.
+
+Latest completed slice: `util/sau_trace_summary.py` now has `--show-flows`.
+The tool preserves optional RTL cycle numbers while keeping existing built-in
+case generation compatible, splits a trace after each D-write run, and prints
+per-flow cycles, request-kind run order, counts, and first/last addresses.
+Verified on
+`/home/zbn/code/npu_lpnpu/sim/vcs/build/mikui_dma/sau_mem_addr_trace.csv`:
+`python3 util/sau_trace_summary.py --case lkssfull_sau_stdconv_10 --rtl-trace /home/zbn/code/npu_lpnpu/sim/vcs/build/mikui_dma/sau_mem_addr_trace.csv --show-flows`
+passes the fixed summary and prints 16 flows. Each flow has 223 requests with
+counts `A=127, B=62, C=2, D=32`; the run order is `B,A,C,A,D`, because each
+flow has one final A read at `0x20025040` after the two C/bias reads and before
+D writes. Existing gem5 summary checks still pass for `normal_conv_stride`,
+`normal_conv_stride_shift`, `pointwise`, and `gemm_shift`.
+
+Latest completed slice: output-retain conversion now passes.
+`SauGoldenGen(test_case="gemm_retain")` runs two GEMM instructions in one
+simulation: the first uses `flow_mode=2` and writes normal GEMM bytes while
+retaining `D_matrix`; the second uses normal `flow_mode=0`, accumulates on the
+retained matrix, and writes doubled bytes `[0, 2, 4, ..., 30]` in every row
+before clearing. Verified command:
+`docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_retain ./configs/tutorial/part1/kui_sau_golden_retain_test.py`.
+Retain stats: 16 CSR writes, 28 CSR reads, 2 flow starts/completions, 64 read
+segments, 32 D write segments, and 486002 busy ticks.
+
+Latest completed slice: combined output-transpose plus retain now passes.
+`SauGoldenGen(test_case="gemm_transpose_retain")` runs a first GEMM with
+`flow_mode=3`, checks the same transposed bytes as `gemm_out_transpose`, then
+runs a normal GEMM and checks doubled normal bytes to prove the untransposed
+retained D state survived. Verified command:
+`docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_transpose_retain ./configs/tutorial/part1/kui_sau_golden_transpose_retain_test.py`.
+Transpose-retain stats: 16 CSR writes, 28 CSR reads, 2 flow starts/completions,
+64 read segments, 32 D write segments, and 486002 busy ticks.
+
+Latest completed slice: GEMM dequantization now has a deterministic vector.
+`SauGoldenGen(test_case="gemm_dequant")` writes `INS1_MSB.cutbit=2`, uses
+all-one A rows and B bytes `0, 4, 8, ..., 60`, and checks output bytes
+`0, 16, 32, ..., 112, 127, ..., 127`; this covers right-shift dequantization
+plus int8 saturation. Verified command:
+`docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_dequant ./configs/tutorial/part1/kui_sau_golden_dequant_test.py`.
+Dequant stats: 8 CSR writes, 14 CSR reads, 1 flow start/completion, 32 read
+segments, 16 D write segments, and 243001 busy ticks. A follow-up
+`gemm_shift` recheck also passed at
+`m5out/sau_golden_shift_recheck`.
+
+Latest completed slice: negative GEMM dequantization now passes.
+`SauGoldenGen(test_case="gemm_dequant_negative")` writes `INS1_MSB.cutbit=2`,
+uses all-one A rows and B bytes encoding `0, -4, -8, ..., -60`, and checks
+packed output bytes `0, 240, 224, ..., 144, 128, ..., 128`; this covers
+arithmetic right shift plus negative int8 saturation. Verified command:
+`docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_dequant_negative ./configs/tutorial/part1/kui_sau_golden_dequant_negative_test.py`.
+Negative dequant stats: 8 CSR writes, 14 CSR reads, 1 flow start/completion,
+32 read segments, 16 D write segments, and 243001 busy ticks.
+
+Latest completed slice: int16 GEMM dequantization now passes.
+`SauGoldenGen(test_case="gemm_dequant_int16")` combines `shift_mode=1` with
+`INS1_MSB.cutbit=2`, reuses the int16 identity A layout from `gemm_shift`, and
+checks the same int16 output byte ordering with each value right-shifted by 2.
+Verified command:
+`docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_dequant_int16 ./configs/tutorial/part1/kui_sau_golden_dequant_int16_test.py`.
+Int16 dequant stats: 8 CSR writes, 19 CSR reads, 1 flow start/completion,
+48 read segments, 32 D write segments, and 339001 busy ticks.
+
+Latest completed slice: pointwise mixed-sign dequantization now passes.
+`SauGoldenGen(test_case="pointwise_dequant_mixed")` uses `conv_kernel=1`,
+`work_mode=2`, `INS1_MSB.cutbit=2`, identity A, alternating signed B columns,
+and all-one C bias. It checks that C is shifted into accumulator scale before
+the signed dequantized int8 output is packed. Verified command:
+`docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_pointwise_dequant_mixed ./configs/tutorial/part1/kui_sau_golden_pointwise_dequant_mixed_test.py`.
+Pointwise mixed dequant stats: 8 CSR writes, 14 CSR reads, 1 flow
+start/completion, 34 read segments, 16 D write segments, and 249001 busy
+ticks.
+
+Latest completed slice: normal-convolution mixed-sign dequantization now
+passes. `SauGoldenGen(test_case="normal_conv_dequant_mixed")` uses
+`conv_kernel=2`, `register_mode=0`, `work_mode=2`, `INS1_MSB.cutbit=2`, a
+one-hot A tile, alternating signed B columns, and all-one C bias. It checks
+normal-conv staging together with C scaling and signed int8 dequantized output
+packing. Verified command:
+`docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_normal_conv_dequant_mixed ./configs/tutorial/part1/kui_sau_golden_normal_conv_dequant_mixed_test.py`.
+Normal-conv mixed dequant stats: 8 CSR writes, 11 CSR reads, 1 flow
+start/completion, 10 read segments, 16 D write segments, and 177001 busy
+ticks.
+
+Latest completed slice: normal-convolution shift-mode output packing now
+passes. `SauGoldenGen(test_case="normal_conv_shift")` uses `conv_kernel=2`,
+`register_mode=0`, `shift_mode=1`, `flow_loop_times=2`, a one-hot A tile,
+zero C data, and the fixed B row pattern. It checks the conv `int16`
+`convMatShift` path plus SAU.py-style 512-byte D output packing. Verified
+command:
+`docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_normal_conv_shift ./configs/tutorial/part1/kui_sau_golden_normal_conv_shift_test.py`.
+Normal-conv shift stats: 8 CSR writes, 14 CSR reads, 1 flow start/completion,
+14 read segments, 32 D write segments, and 237001 busy ticks.
+
+Latest completed slice: depthwise-convolution shift-mode output packing now
+passes. `SauGoldenGen(test_case="depthwise_conv_shift")` uses
+`conv_kernel=2`, `register_mode=2`, `shift_mode=1`, `flow_loop_times=2`, a
+one-hot A tile, zero C data, and the fixed B row pattern. It checks the conv
+`int16` `convMatShift` path, DW B-column mask, and SAU.py-style 512-byte D
+output packing. Verified command:
+`docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_depthwise_conv_shift ./configs/tutorial/part1/kui_sau_golden_depthwise_conv_shift_test.py`.
+Depthwise-conv shift stats: 8 CSR writes, 14 CSR reads, 1 flow
+start/completion, 14 read segments, 32 D write segments, and 237001 busy
+ticks.
+
+Latest completed slice: normal/depthwise convolution stride-mode output-row
+selection now passes. `SauGoldenGen(test_case="normal_conv_stride")` and
+`SauGoldenGen(test_case="depthwise_conv_stride")` both use `conv_kernel=2`,
+`stride=1`, `shift_mode=0`, `flow_loop_times=1`, zero C data, and a one-hot A
+lane in input row 1. The normal-conv vector checks that the fixed B row pattern
+moves to D row 8; the depthwise vector checks that the DW B-column mask leaves
+only byte 15 of D row 8 set. Verified commands:
+`docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_normal_conv_stride ./configs/tutorial/part1/kui_sau_golden_normal_conv_stride_test.py`
+and
+`docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_depthwise_conv_stride ./configs/tutorial/part1/kui_sau_golden_depthwise_conv_stride_test.py`.
+Both stride stats: 8 CSR writes, 11 CSR reads, 1 flow start/completion, 12 read
+segments, 16 D write segments, and 183001 busy ticks.
+
+Latest completed slice: normal/depthwise combined stride+shift convolution now
+passes. `SauGoldenGen(test_case="normal_conv_stride_shift")` and
+`SauGoldenGen(test_case="depthwise_conv_stride_shift")` both use
+`conv_kernel=2`, `stride=1`, `shift_mode=1`, `flow_loop_times=2`, zero C data,
+and a one-hot A lane in input row 1. The normal-conv vector checks the stride
+merge together with the 512-byte int16 D packing by producing nonzero packed
+bytes in output rows 8/9; the depthwise vector checks that the DW B-column mask
+still leaves only byte 15 of output row 8 set. Verified commands:
+`docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_normal_conv_stride_shift ./configs/tutorial/part1/kui_sau_golden_normal_conv_stride_shift_test.py`
+and
+`docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_depthwise_conv_stride_shift ./configs/tutorial/part1/kui_sau_golden_depthwise_conv_stride_shift_test.py`.
+Both stride+shift stats: 8 CSR writes, 14 CSR reads, 1 flow start/completion,
+18 read segments, 32 D write segments, and 249001 busy ticks.
+
+Latest completed slice: normal/depthwise combined stride+dequant convolution
+now passes. `SauGoldenGen(test_case="normal_conv_stride_dequant_mixed")` and
+`SauGoldenGen(test_case="depthwise_conv_stride_dequant_mixed")` both use
+`conv_kernel=2`, `stride=1`, `shift_mode=0`, `work_mode=2`, `INS1_MSB.cutbit=2`,
+an input-row-1 one-hot A lane, alternating signed B columns, and all-one C
+bias. The normal-conv vector proves stride row selection composes with C scaling
+and signed dequantization by updating output row 8; the depthwise vector proves
+the same path under the DW B-column mask. Verified commands:
+`docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_normal_conv_stride_dequant_mixed ./configs/tutorial/part1/kui_sau_golden_normal_conv_stride_dequant_mixed_test.py`
+and
+`docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_depthwise_conv_stride_dequant_mixed ./configs/tutorial/part1/kui_sau_golden_depthwise_conv_stride_dequant_mixed_test.py`.
+Both stride+dequant stats: 8 CSR writes, 11 CSR reads, 1 flow start/completion,
+12 read segments, 16 D write segments, and 183001 busy ticks.
+
+Latest completed slice: normal/depthwise combined stride+shift+dequant
+convolution now passes.
+`SauGoldenGen(test_case="normal_conv_stride_shift_dequant_mixed")` and
+`SauGoldenGen(test_case="depthwise_conv_stride_shift_dequant_mixed")` both use
+`conv_kernel=2`, `stride=1`, `shift_mode=1`, `work_mode=2`,
+`INS1_MSB.cutbit=2`, `flow_loop_times=2`, an input-row-1 one-hot A lane,
+alternating signed B columns, and all-one C bias. The normal-conv vector checks
+stride row selection plus 512-byte int16 output packing after C scaling and
+signed dequantization by updating packed D rows 8/9. The depthwise vector checks
+the same combined path under the DW B-column mask by leaving only the expected
+packed byte pair in row 8 changed from the unit-bias baseline. Verified
+commands:
+`docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_normal_conv_stride_shift_dequant_mixed ./configs/tutorial/part1/kui_sau_golden_normal_conv_stride_shift_dequant_mixed_test.py`
+and
+`docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_depthwise_conv_stride_shift_dequant_mixed ./configs/tutorial/part1/kui_sau_golden_depthwise_conv_stride_shift_dequant_mixed_test.py`.
+Both stride+shift+dequant stats: 8 CSR writes, 14 CSR reads, 1 flow
+start/completion, 18 read segments, 32 D write segments, and 249001 busy ticks.
+
+Latest completed slice: depthwise-convolution mixed-sign dequantization now
+passes. `SauGoldenGen(test_case="depthwise_conv_dequant_mixed")` uses
+`conv_kernel=2`, `register_mode=2`, `work_mode=2`, `INS1_MSB.cutbit=2`, a
+one-hot A tile, alternating signed B columns, and all-one C bias. It checks the
+DW B-column mask together with C scaling and signed int8 dequantized output
+packing. Verified command:
+`docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_depthwise_conv_dequant_mixed ./configs/tutorial/part1/kui_sau_golden_depthwise_conv_dequant_mixed_test.py`.
+Depthwise-conv mixed dequant stats: 8 CSR writes, 11 CSR reads, 1 flow
+start/completion, 10 read segments, 16 D write segments, and 177001 busy
+ticks.
+
+## Reference Sources
+
+Reference material extracted from the KuiLoong NPU repositories is stored under
+`src/sau/reference`. These files are not included by `src/sau/SConscript`.
+
+- Hardware source repository: `/home/zbn/code/npu_lpnpu`
+- Hardware extraction filelist:
+  `/home/zbn/code/npu_lpnpu/syn/script/mikui_dma/lpnpu_mikui_dma.f`
+- Reduced local SAU filelist:
+  `src/sau/reference/hardware/lpnpu_mikui_dma_sau.f`
+- Software simulator source:
+  `/home/zbn/code/toolchain_workdir/workdir/gitee_toolchain/kuiloong-sim/src/SAU`
+- Local simulator copy:
+  `src/sau/reference/simulator/SAU/SAU.py`
+
+The hardware extraction follows the SAU section of the source filelist:
+`hardware/src/sa_execute`, `hardware/src/sa_element`, `macro.svh`, and
+`SA_pkg.sv`. The local copy also includes `macro_gclk.svh`,
+`v_clock_latch.v`, and `v_clock_pass.v` because `SA_CORE.sv` depends on them.
+Python cache files from the simulator source were intentionally omitted.
+
+## Useful Commands
+
+Build the RISCV gem5 binary:
+
+```sh
+scons build/RISCV/gem5.opt -j$(nproc)
+```
+
+Run the current simple memory smoke test:
+
+```sh
+./build/RISCV/gem5.opt ./configs/tutorial/part1/kui_system_mem.py > output.log
+```
+
+Run the focused CSR readback test:
+
+```sh
+./build/RISCV/gem5.opt ./configs/tutorial/part1/kui_csrgen_test.py
+```
+
+Run the deterministic SAU golden GEMM test:
+
+```sh
+./build/RISCV/gem5.opt ./configs/tutorial/part1/kui_sau_golden_test.py
+```
+
+Run the deterministic SAU matrix-add golden test:
+
+```sh
+./build/RISCV/gem5.opt ./configs/tutorial/part1/kui_sau_golden_add_test.py
+```
+
+Run the deterministic SAU shift-mode GEMM golden test:
+
+```sh
+./build/RISCV/gem5.opt ./configs/tutorial/part1/kui_sau_golden_shift_test.py
+```
+
+Run the deterministic SAU cutbit/dequantization golden test:
+
+```sh
+./build/RISCV/gem5.opt --outdir=m5out/sau_golden_dequant ./configs/tutorial/part1/kui_sau_golden_dequant_test.py
+```
+
+Run the deterministic SAU negative cutbit/dequantization golden test:
+
+```sh
+./build/RISCV/gem5.opt --outdir=m5out/sau_golden_dequant_negative ./configs/tutorial/part1/kui_sau_golden_dequant_negative_test.py
+```
+
+Run the deterministic SAU int16 cutbit/dequantization golden test:
+
+```sh
+./build/RISCV/gem5.opt --outdir=m5out/sau_golden_dequant_int16 ./configs/tutorial/part1/kui_sau_golden_dequant_int16_test.py
+```
+
+Run the deterministic SAU pointwise-convolution golden test:
+
+```sh
+./build/RISCV/gem5.opt ./configs/tutorial/part1/kui_sau_golden_pointwise_test.py
+```
+
+Run the deterministic SAU pointwise mixed-sign dequantization golden test:
+
+```sh
+./build/RISCV/gem5.opt --outdir=m5out/sau_golden_pointwise_dequant_mixed ./configs/tutorial/part1/kui_sau_golden_pointwise_dequant_mixed_test.py
+```
+
+Run the deterministic SAU output-transpose golden test:
+
+```sh
+./build/RISCV/gem5.opt ./configs/tutorial/part1/kui_sau_golden_transpose_test.py
+```
+
+Run the deterministic SAU normal-convolution golden test:
+
+```sh
+./build/RISCV/gem5.opt ./configs/tutorial/part1/kui_sau_golden_normal_conv_test.py
+```
+
+Run the deterministic SAU normal-convolution rich-data golden test:
+
+```sh
+./build/RISCV/gem5.opt --outdir=m5out/sau_golden_normal_conv_rich ./configs/tutorial/part1/kui_sau_golden_normal_conv_rich_test.py
+```
+
+Run the deterministic SAU normal-convolution shift-mode golden test:
+
+```sh
+./build/RISCV/gem5.opt --outdir=m5out/sau_golden_normal_conv_shift ./configs/tutorial/part1/kui_sau_golden_normal_conv_shift_test.py
+```
+
+Run the deterministic SAU normal-convolution stride-mode golden test:
+
+```sh
+./build/RISCV/gem5.opt --outdir=m5out/sau_golden_normal_conv_stride ./configs/tutorial/part1/kui_sau_golden_normal_conv_stride_test.py
+```
+
+Run the deterministic SAU normal-convolution stride+shift golden test:
+
+```sh
+./build/RISCV/gem5.opt --outdir=m5out/sau_golden_normal_conv_stride_shift ./configs/tutorial/part1/kui_sau_golden_normal_conv_stride_shift_test.py
+```
+
+Run the deterministic SAU normal-convolution mixed-sign dequantization golden
+test:
+
+```sh
+./build/RISCV/gem5.opt --outdir=m5out/sau_golden_normal_conv_dequant_mixed ./configs/tutorial/part1/kui_sau_golden_normal_conv_dequant_mixed_test.py
+```
+
+Run the deterministic SAU normal-convolution stride+dequant golden test:
+
+```sh
+./build/RISCV/gem5.opt --outdir=m5out/sau_golden_normal_conv_stride_dequant_mixed ./configs/tutorial/part1/kui_sau_golden_normal_conv_stride_dequant_mixed_test.py
+```
+
+Run the deterministic SAU normal-convolution stride+shift+dequant golden test:
+
+```sh
+./build/RISCV/gem5.opt --outdir=m5out/sau_golden_normal_conv_stride_shift_dequant_mixed ./configs/tutorial/part1/kui_sau_golden_normal_conv_stride_shift_dequant_mixed_test.py
+```
+
+Run the deterministic SAU depthwise-convolution golden test:
+
+```sh
+./build/RISCV/gem5.opt ./configs/tutorial/part1/kui_sau_golden_depthwise_conv_test.py
+```
+
+Run the deterministic SAU depthwise-convolution rich-data golden test:
+
+```sh
+./build/RISCV/gem5.opt --outdir=m5out/sau_golden_depthwise_conv_rich ./configs/tutorial/part1/kui_sau_golden_depthwise_conv_rich_test.py
+```
+
+Run the deterministic SAU depthwise-convolution shift-mode golden test:
+
+```sh
+./build/RISCV/gem5.opt --outdir=m5out/sau_golden_depthwise_conv_shift ./configs/tutorial/part1/kui_sau_golden_depthwise_conv_shift_test.py
+```
+
+Run the deterministic SAU depthwise-convolution stride-mode golden test:
+
+```sh
+./build/RISCV/gem5.opt --outdir=m5out/sau_golden_depthwise_conv_stride ./configs/tutorial/part1/kui_sau_golden_depthwise_conv_stride_test.py
+```
+
+Run the deterministic SAU depthwise-convolution stride+shift golden test:
+
+```sh
+./build/RISCV/gem5.opt --outdir=m5out/sau_golden_depthwise_conv_stride_shift ./configs/tutorial/part1/kui_sau_golden_depthwise_conv_stride_shift_test.py
+```
+
+Run the deterministic SAU depthwise-convolution mixed-sign dequantization golden
+test:
+
+```sh
+./build/RISCV/gem5.opt --outdir=m5out/sau_golden_depthwise_conv_dequant_mixed ./configs/tutorial/part1/kui_sau_golden_depthwise_conv_dequant_mixed_test.py
+```
+
+Run the deterministic SAU depthwise-convolution stride+dequant golden test:
+
+```sh
+./build/RISCV/gem5.opt --outdir=m5out/sau_golden_depthwise_conv_stride_dequant_mixed ./configs/tutorial/part1/kui_sau_golden_depthwise_conv_stride_dequant_mixed_test.py
+```
+
+Run the deterministic SAU depthwise-convolution stride+shift+dequant golden test:
+
+```sh
+./build/RISCV/gem5.opt --outdir=m5out/sau_golden_depthwise_conv_stride_shift_dequant_mixed ./configs/tutorial/part1/kui_sau_golden_depthwise_conv_stride_shift_dequant_mixed_test.py
+```
+
+Run the deterministic SAU output-retain golden test:
+
+```sh
+./build/RISCV/gem5.opt --outdir=m5out/sau_golden_retain ./configs/tutorial/part1/kui_sau_golden_retain_test.py
+```
+
+Run the deterministic SAU output-transpose-retain golden test:
+
+```sh
+./build/RISCV/gem5.opt --outdir=m5out/sau_golden_transpose_retain ./configs/tutorial/part1/kui_sau_golden_transpose_retain_test.py
+```
+
+Docker environment recorded in `docs/my_gem5.md`:
+
+```sh
+docker run -u $UID:$GID -v /home/zbn/code/gem5:/gem5 -it ghcr.io/gem5/ubuntu-24.04_all-dependencies:latest bash
+docker run -u $UID:$GID -v /home/zbn/code/gem5:/gem5 -it --name gem5-dev ghcr.io/gem5/ubuntu-24.04_all-dependencies:latest bash
+docker start -ai gem5-dev
+```
+
+Commands verified in `gem5-dev`:
+
+```sh
+docker exec -w /gem5/gem5-kui gem5-dev scons build/RISCV/gem5.opt -j2
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt ./configs/tutorial/part1/kui_sau_golden_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt ./configs/tutorial/part1/kui_sau_golden_add_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt ./configs/tutorial/part1/kui_sau_golden_shift_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_dequant ./configs/tutorial/part1/kui_sau_golden_dequant_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_dequant_negative ./configs/tutorial/part1/kui_sau_golden_dequant_negative_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_dequant_int16 ./configs/tutorial/part1/kui_sau_golden_dequant_int16_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt ./configs/tutorial/part1/kui_sau_golden_pointwise_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_pointwise_dequant_mixed ./configs/tutorial/part1/kui_sau_golden_pointwise_dequant_mixed_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt ./configs/tutorial/part1/kui_sau_golden_transpose_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt ./configs/tutorial/part1/kui_sau_golden_normal_conv_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_normal_conv_rich ./configs/tutorial/part1/kui_sau_golden_normal_conv_rich_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_normal_conv_shift ./configs/tutorial/part1/kui_sau_golden_normal_conv_shift_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_normal_conv_stride ./configs/tutorial/part1/kui_sau_golden_normal_conv_stride_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_normal_conv_stride_shift ./configs/tutorial/part1/kui_sau_golden_normal_conv_stride_shift_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_normal_conv_dequant_mixed ./configs/tutorial/part1/kui_sau_golden_normal_conv_dequant_mixed_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_normal_conv_stride_dequant_mixed ./configs/tutorial/part1/kui_sau_golden_normal_conv_stride_dequant_mixed_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_normal_conv_stride_shift_dequant_mixed ./configs/tutorial/part1/kui_sau_golden_normal_conv_stride_shift_dequant_mixed_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt ./configs/tutorial/part1/kui_sau_golden_depthwise_conv_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_depthwise_conv_rich ./configs/tutorial/part1/kui_sau_golden_depthwise_conv_rich_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_depthwise_conv_shift ./configs/tutorial/part1/kui_sau_golden_depthwise_conv_shift_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_depthwise_conv_stride ./configs/tutorial/part1/kui_sau_golden_depthwise_conv_stride_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_depthwise_conv_stride_shift ./configs/tutorial/part1/kui_sau_golden_depthwise_conv_stride_shift_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_depthwise_conv_dequant_mixed ./configs/tutorial/part1/kui_sau_golden_depthwise_conv_dequant_mixed_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_depthwise_conv_stride_dequant_mixed ./configs/tutorial/part1/kui_sau_golden_depthwise_conv_stride_dequant_mixed_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_depthwise_conv_stride_shift_dequant_mixed ./configs/tutorial/part1/kui_sau_golden_depthwise_conv_stride_shift_dequant_mixed_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_retain ./configs/tutorial/part1/kui_sau_golden_retain_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_golden_transpose_retain ./configs/tutorial/part1/kui_sau_golden_transpose_retain_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt ./configs/tutorial/part1/kui_csrgen_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt ./configs/tutorial/part1/kui_system_mem.py
+```
+
+Check tagged address summary stats for the rich-data conv runs:
+
+```sh
+rg -n "kuisau.*(flow(Read[ABC]|WriteD)Addr(First|Last|Sum|Xor)|flowReadSegments|flowWriteSegments)" m5out/sau_golden_normal_conv_rich/stats.txt m5out/sau_golden_depthwise_conv_rich/stats.txt
+```
+
+Re-run the representative address-summary coverage set:
+
+```sh
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_addr_normal_conv_stride ./configs/tutorial/part1/kui_sau_golden_normal_conv_stride_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_addr_normal_conv_stride_shift ./configs/tutorial/part1/kui_sau_golden_normal_conv_stride_shift_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_addr_pointwise ./configs/tutorial/part1/kui_sau_golden_pointwise_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_addr_gemm_shift ./configs/tutorial/part1/kui_sau_golden_shift_test.py
+```
+
+Re-run the C-read gate A/B check:
+
+```sh
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_addr_normal_conv_stride_default_cgate ./configs/tutorial/part1/kui_sau_golden_normal_conv_stride_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_addr_normal_conv_stride_rtl_cgate ./configs/tutorial/part1/kui_sau_golden_normal_conv_stride_rtl_trace_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_addr_normal_conv_stride_shift_rtl_cgate ./configs/tutorial/part1/kui_sau_golden_normal_conv_stride_shift_rtl_trace_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_addr_pointwise_rtl_cgate ./configs/tutorial/part1/kui_sau_golden_pointwise_rtl_trace_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_addr_gemm_shift_rtl_cgate ./configs/tutorial/part1/kui_sau_golden_shift_rtl_trace_test.py
+```
+
+Re-run the global order trace stats check:
+
+```sh
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_order_normal_conv_stride_rtl_cgate ./configs/tutorial/part1/kui_sau_golden_normal_conv_stride_rtl_trace_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_order_normal_conv_stride_shift_rtl_cgate ./configs/tutorial/part1/kui_sau_golden_normal_conv_stride_shift_rtl_trace_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_order_pointwise_rtl_cgate ./configs/tutorial/part1/kui_sau_golden_pointwise_rtl_trace_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_order_gemm_shift_rtl_cgate ./configs/tutorial/part1/kui_sau_golden_shift_rtl_trace_test.py
+python3 util/sau_trace_summary.py --case normal_conv_stride --gem5-stats m5out/sau_order_normal_conv_stride_rtl_cgate/stats.txt
+python3 util/sau_trace_summary.py --case normal_conv_stride_shift --gem5-stats m5out/sau_order_normal_conv_stride_shift_rtl_cgate/stats.txt
+python3 util/sau_trace_summary.py --case pointwise --gem5-stats m5out/sau_order_pointwise_rtl_cgate/stats.txt
+python3 util/sau_trace_summary.py --case gemm_shift --gem5-stats m5out/sau_order_gemm_shift_rtl_cgate/stats.txt
+```
+
+Suggested next-session starting point:
+
+```sh
+sed -n '1,220p' docs/SAU_RTL_Trace_Capture.md
+./util/sau_prepare_rtl_trace_filelist.sh
+# Then run the printed VCS command after external-write approval.
+```
+
+## Shutdown Checkpoint 2026-06-07
+
+User stopped for the day while the active task was converting the captured
+software/RTL SAU design toward the gem5 model. Do not mark the conversion goal
+complete. The next useful continuation is to make the RTL flow-shape analysis
+reproducible, then map that shape into a gem5 `SauGoldenGen` or trace-only
+stdconv case.
+
+Start next session with:
+
+```sh
+sed -n '680,740p' docs/SAU_Gem5_Conversion_Plan.md
+sed -n '1,180p' docs/SAU_RTL_Trace_Capture.md
+python3 util/sau_trace_summary.py --case lkssfull_sau_stdconv_10 --rtl-trace /home/zbn/code/npu_lpnpu/sim/vcs/build/mikui_dma/sau_mem_addr_trace.csv
+```
+
+Current RTL smoke trace anchor:
+
+- Trace file:
+  `/home/zbn/code/npu_lpnpu/sim/vcs/build/mikui_dma/sau_mem_addr_trace.csv`.
+- Case:
+  `/home/zbn/code/npu_lpnpu/testcase/lkssfull_sau_stdconv/10_sau_regress_INT16_SAU_NORMCONV_TEST_ID_0`.
+- VCS result: scoreboard `ALL TESTS PASSED`, NPU done, `$finish` at
+  `6036925 ns`.
+- Total requests: 3568. Counts A/B/C/D: `2032/992/32/512`.
+- Global first/last/sum/xor/hash:
+  `537022560/537021456/1916096721408/15360/8164653382730703`.
+
+Verified flow-shape analysis of that RTL CSV:
+
+- It splits naturally into 16 flows.
+- Each flow has request counts `A=127, B=62, C=2, D=32`.
+- Per flow request order is `B,A,C,A,D`, so the current gem5
+  representative scheduler order `A, B, C, D` will not match the global
+  `flowTraceOrderHash` until order is modeled or the checker compares only
+  per-kind summaries.
+- Flow 0 starts around B `0x20025060`, A `0x20026c00`, C `0x20025010`, and
+  D `0x20022c20`.
+- Flow 1 first B/A/D advance by `0x40/0x40/0x20`; C remains at
+  `0x20025010` and `0x20025030`.
+- D writes 32 addresses per flow, with pairs separated by `0x10` and rows by
+  `0x200` (for flow 0: `0x20022c20`, `0x20022c30`, ...,
+  `0x20024a30`).
+
+Firmware/source clues already found:
+
+- `elf_symbols.txt` has `_Z15sau_single_testv` at `0x1d40`, `bias_sa` at
+  `0x20010a54`, `kernel_sa` at `0x20010a74`, `output_sa` at `0x20010e64`,
+  and `input_sa` at `0x20012e64`.
+- The firmware calls `normconv_s16_16bPsS_PaS_iiiiiii` at `0x15f8`.
+- Call setup appears to pass input, bias, kernel, output pointers followed by
+  scalar arguments `18, 7, 3, 16` plus stack values `1, 14, 2`.
+- Relevant software packing logic is in
+  `/home/zbn/code/toolchain_workdir/workdir/gitee_toolchain/kuiloong-NN/acenn/matrix/conv2d.hpp`.
+
+Latest continuation slice:
+
+- Added `KuiSau.trace_replay`, currently supporting
+  `lkssfull_sau_stdconv_10`.
+- Added `SauGoldenGen(test_case="lkssfull_sau_stdconv_10_trace")` and
+  `configs/tutorial/part1/kui_sau_lkssfull_stdconv_trace_test.py`.
+- The trace replay emits the exact compressed RTL request rule for the captured
+  smoke case: 16 flows, per-flow order `B,A,C,A,D`, per-flow counts
+  `B=62, A=127, C=2, D=32`, and global counts
+  `A/B/C/D=2032/992/32/512`.
+- The replay was tightened after firmware inspection: it now emits 16
+  normconv-style CSR starts instead of one artificial start for all 16 flows.
+  Each start maps `ins4_lsb` D offset `0x22c20 + n * 0x20` to one RTL flow.
+  The current reconstructed CSR words are:
+  `ins1_lsb/ins1_msb=0x2c/0x88`,
+  `ins2_lsb/ins2_msb=0x401/0x101209`,
+  `ins3_lsb=0x25030`,
+  `ins3_msb=0x24c30 + n*0x40`,
+  `ins4_lsb=((0x22c20 + n*0x20) << 9) | 1`,
+  and `ins4_msb=0x0e525010`.
+- The replay uses a 128-request in-flight window. A first attempt to issue all
+  3568 requests at once hit gem5's coherent xbar routing-table limit
+  (`routeTo.size() > maxRoutingTableSizeCheck`), so keep the windowed drain.
+- This is an address/order harness only. It does not prove the current
+  functional scheduler can derive the same pattern from CSRs, and it does not
+  check D output bytes.
+
+Verified commands:
+
+```sh
+docker exec -w /gem5/gem5-kui gem5-dev scons build/RISCV/gem5.opt -j2
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_lkssfull_stdconv_trace ./configs/tutorial/part1/kui_sau_lkssfull_stdconv_trace_test.py
+python3 util/sau_trace_summary.py --case lkssfull_sau_stdconv_10 --gem5-stats m5out/sau_lkssfull_stdconv_trace/stats.txt
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_regress_normal_conv_stride ./configs/tutorial/part1/kui_sau_golden_normal_conv_stride_test.py
+```
+
+The `sau_trace_summary.py` gem5 check reports every
+`lkssfull_sau_stdconv_10` field OK, including
+`flowTraceOrderHash=8164653382730703`. The normal-conv stride regression still
+passes.
+
+Recommended next edits:
+
+1. Map the captured firmware arguments and generated `normconv_s16_16b` loop
+   into a real gem5 scheduler path, using the trace replay as the regression
+   anchor.
+2. Keep using
+   `python3 util/sau_trace_summary.py --case lkssfull_sau_stdconv_10 --rtl-trace /home/zbn/code/npu_lpnpu/sim/vcs/build/mikui_dma/sau_mem_addr_trace.csv --show-flows`
+   as the RTL flow-shape reference while replacing trace-only behavior with
+   CSR-derived behavior.
+
+Latest continuation slice:
+
+- Rechecked the external firmware disassembly around `normconv_s16_16b`
+  (`0x15f8`, active branch `0x18c0..0x18cc`) and the call setup in
+  `sau_single_test` (`0x1f86..0x1fa2`).
+- Corrected the reconstructed trace-driver CSR word
+  `ins2_lsb` from `0x00000401` to `0x00020401`. The decoded fixture is now:
+  `register_mode=0`, `conv_kernel=3`, `stride=0`, `shift=1`, `cutbit=2`,
+  `B_x/A_x/D_x=1/4/2`, `B_ch/A_ch/D_ch=9/18/16`, `work_mode=1`,
+  `flow_mode=1`, and `flow_times=14`.
+- Updated `docs/SAU_Gem5_Conversion_Plan.md` and
+  `docs/SAU_Gem5_Design_Mapping.md` with the corrected CSR table and the
+  remaining functional gap: RTL `mem_addr.sv` turns the CSR bases into the
+  `B,A,C,A,D` stream, including B/A conv-reuse offsets and shift-mode D writes
+  as `(D + row*0x200, D + row*0x200 + 0x10)`. The normal gem5 scheduler still
+  needs that D pair-write behavior; the trace replay is still only an
+  address/order harness.
+- Verified after the correction:
+
+```sh
+python3 -m py_compile configs/tutorial/part1/kui_sau_lkssfull_stdconv_trace_test.py src/sau/KuiSau.py src/sau/SauGoldenGen.py util/sau_trace_summary.py
+git diff --check
+docker exec -w /gem5/gem5-kui gem5-dev scons build/RISCV/gem5.opt -j2
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_lkssfull_stdconv_trace ./configs/tutorial/part1/kui_sau_lkssfull_stdconv_trace_test.py
+python3 util/sau_trace_summary.py --case lkssfull_sau_stdconv_10 --gem5-stats m5out/sau_lkssfull_stdconv_trace/stats.txt
+```
+
+All `lkssfull_sau_stdconv_10` stats still match, including
+`flowTraceOrderHash=8164653382730703`. The trace run exits with
+`SAU golden lkssfull_sau_stdconv_10_trace trace replay done`, exit code 0.
+The Python `__pycache__` directories generated during checks, plus the old
+`src/sau/reference/simulator/SAU/__pycache__/SAU.cpython-36.pyc`, were removed
+so the extracted reference tree stays source-only.
+
+Latest continuation slice:
+
+- `KuiSau::issueLkssfullStdconv10ReplayFlow()` now generates the
+  `lkssfull_sau_stdconv_10` request stream from decoded CSR fields instead of
+  raw replay addresses. It still validates the fixture mode, but B/C/D and the
+  late-A request now come from `config.*`, `unitSize`, `flow_loop_times`, and
+  `shift_mode`.
+- The RTL trace checker caught an intermediate mistake: applying the inner-start
+  A offset to all A reuse reads preserved first/last/xor but changed A sum and
+  the global order hash. The corrected model keeps the reuse A window fixed at
+  `0x24c30` and only applies the inner-start offset to the late-A request.
+- Verified after the CSR-derived replay rewrite:
+
+```sh
+git diff --check
+python3 -m py_compile configs/tutorial/part1/kui_sau_lkssfull_stdconv_trace_test.py src/sau/KuiSau.py src/sau/SauGoldenGen.py util/sau_trace_summary.py
+docker exec -w /gem5/gem5-kui gem5-dev scons build/RISCV/gem5.opt -j2
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_lkssfull_stdconv_trace ./configs/tutorial/part1/kui_sau_lkssfull_stdconv_trace_test.py
+python3 util/sau_trace_summary.py --case lkssfull_sau_stdconv_10 --gem5-stats m5out/sau_lkssfull_stdconv_trace/stats.txt
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_regress_normal_conv_stride ./configs/tutorial/part1/kui_sau_golden_normal_conv_stride_test.py
+```
+
+The final checker is fully OK, including
+`flowReadAAddrSum=1091228802304` and
+`flowTraceOrderHash=8164653382730703`. The final normal-conv stride regression
+also passes on the rebuilt binary.
+
+Next best code step:
+
+1. Move the CSR-derived stdconv16 request generator out of trace replay and
+   into the normal scheduler path behind an explicit mode check.
+2. Add shift-mode D pair-write shape (`D + row*step` and `+ unitSize`) to the
+   normal functional scheduler.
+3. Keep the trace replay as the regression oracle while functional D data
+   checking is added for this larger firmware-derived case.
+
+End-of-day checkpoint, 2026-06-07:
+
+- The CSR-derived `lkssfull_sau_stdconv_10` request stream has been wired into
+  the ordinary `executeFlow()` path behind `isLkssfullStdconv10Config()`. The
+  new helper `lkssfullStdconv10InnerStart()` decodes the flow index from the D
+  base (`0x22c20 + n * 0x20`) and rejects unexpected starts.
+- `configs/tutorial/part1/kui_sau_lkssfull_stdconv_scheduler_test.py` was added
+  to drive the same 16 CSR starts without setting `KuiSau.trace_replay`. The
+  implementation still reuses the trace-replay drain/completion machinery, so
+  this is an address/order scheduler step, not full D-data functional
+  equivalence yet.
+- Verified before stopping:
+
+```sh
+git diff --check
+python3 -m py_compile configs/tutorial/part1/kui_sau_lkssfull_stdconv_trace_test.py configs/tutorial/part1/kui_sau_lkssfull_stdconv_scheduler_test.py src/sau/KuiSau.py src/sau/SauGoldenGen.py util/sau_trace_summary.py
+docker exec -w /gem5/gem5-kui gem5-dev scons build/RISCV/gem5.opt -j2
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_lkssfull_stdconv_trace ./configs/tutorial/part1/kui_sau_lkssfull_stdconv_trace_test.py
+```
+
+- The trace replay run exited with
+  `SAU golden lkssfull_sau_stdconv_10_trace trace replay done`, exit code 0.
+- The `__pycache__` directories from `py_compile` were removed:
+  `configs/tutorial/part1/__pycache__`, `src/sau/__pycache__`, and
+  `util/__pycache__`.
+- Tomorrow's first commands:
+
+```sh
+python3 util/sau_trace_summary.py --case lkssfull_sau_stdconv_10 --gem5-stats m5out/sau_lkssfull_stdconv_trace/stats.txt
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_lkssfull_stdconv_scheduler ./configs/tutorial/part1/kui_sau_lkssfull_stdconv_scheduler_test.py
+python3 util/sau_trace_summary.py --case lkssfull_sau_stdconv_10 --gem5-stats m5out/sau_lkssfull_stdconv_scheduler/stats.txt
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_regress_normal_conv_stride ./configs/tutorial/part1/kui_sau_golden_normal_conv_stride_test.py
+git diff --check
+git status --short
+```
+
+Next best code step after those checks:
+
+1. Rename/refactor the request-stream helper so it no longer reads as
+   trace-only plumbing.
+2. Add full functional D data checking for the firmware-derived stdconv16 case.
+3. Add the shift-mode D pair-write shape to the general functional scheduler.
+
+Latest continuation slice:
+
+- Renamed `KuiSau::issueLkssfullStdconv10ReplayFlow()` to
+  `KuiSau::issueLkssfullStdconv10RequestStream()` because the helper is now used
+  by both `executeTraceReplay()` and the ordinary `executeFlow()` scheduler
+  path.
+- Confirmed `configs/tutorial/part1/kui_sau_lkssfull_stdconv_scheduler_test.py`
+  runs with `Trace replay: disabled`, reaches the CSR-derived request stream
+  through `isLkssfullStdconv10Config()`, and preserves the exact
+  `lkssfull_sau_stdconv_10` address/order shape.
+- Updated `docs/SAU_Gem5_Conversion_Plan.md`,
+  `docs/SAU_Gem5_Design_Mapping.md`, and
+  `docs/SAU_RTL_Trace_Capture.md` to record that the scheduler path is now
+  verified for address/order, while full D-data equivalence is still future
+  work.
+- Verified after the rename:
+
+```sh
+git diff --check
+docker exec -w /gem5/gem5-kui gem5-dev scons build/RISCV/gem5.opt -j2
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_lkssfull_stdconv_trace ./configs/tutorial/part1/kui_sau_lkssfull_stdconv_trace_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_lkssfull_stdconv_scheduler ./configs/tutorial/part1/kui_sau_lkssfull_stdconv_scheduler_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_regress_normal_conv_stride ./configs/tutorial/part1/kui_sau_golden_normal_conv_stride_test.py
+python3 util/sau_trace_summary.py --case lkssfull_sau_stdconv_10 --gem5-stats m5out/sau_lkssfull_stdconv_trace/stats.txt
+python3 util/sau_trace_summary.py --case lkssfull_sau_stdconv_10 --gem5-stats m5out/sau_lkssfull_stdconv_scheduler/stats.txt
+```
+
+Both stdconv checkers report every fixed field OK, including
+`flowTraceOrderHash=8164653382730703`. The normal-conv stride run exits with
+`SAU golden normal_conv_stride test passed`.
+
+Next best code step:
+
+1. Add full functional D-data checking for the firmware-derived stdconv16 case.
+2. Add shift-mode D pair-write shape to the general functional scheduler.
+3. Reduce the noisy per-response logging once the address-order path is stable.
+
+## Known Local State
+
+- `docs/my_gem5.md` contains the current gem5 test record.
+- A previous root-level `my_gem5.md` appears to have been moved or deleted by
+  the user; do not restore it unless explicitly asked.
+- `test_output.log` records a prior CSR config failure from an `AddrRange`
+  string issue in `configs/tutorial/part1/kui_system_csr_test.py`.
+
+## Development Guidance
+
+- Treat `src/sau/reference` as source-of-truth material for comparison, not as
+  code to compile into gem5 unless explicitly requested.
+- Keep changes to the current gem5 SimObject under `src/sau` scoped and verify
+  with the RISCV build or the smallest relevant tutorial config.
+- When copying from the external NPU repositories, prefer the provided filelist
+  over broad directory copies.
+- Preserve the distinction between CSR-triggered functional execution and
+  `enable_random_traffic` smoke traffic; the random path is only a connectivity
+  check.
+- Do not claim full SAU functional equivalence from the current
+  GEMM/add/shift/dequant/pointwise/output-transpose/normal-conv/depthwise-conv/
+  retain golden vectors; broader mode-specific vectors are still needed,
+  especially additional normal/depthwise modes and data shapes, broader mixed
+  shift/dequant variants, D_wstrb corner cases, and RTL request-trace
+  validation.

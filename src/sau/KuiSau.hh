@@ -4,7 +4,10 @@
 #include <iostream>
 #include <iomanip>
 #include <random>
+#include <string>
+#include <utility>
 #include <vector>
+#include <deque>
 #include <cassert>
 #include <cstring>
 
@@ -12,10 +15,12 @@
 
 #include "sim/sim_object.hh"
 #include "sim/clock_domain.hh"
+#include "sim/system.hh"
 
 #include "base/trace.hh"
 #include "base/logging.hh"
 #include "base/addr_range.hh"
+#include "base/statistics.hh"
 #include "mem/port.hh"
 #include "mem/packet.hh"
 
@@ -86,6 +91,7 @@ struct StatusReg {
     uint8_t running = 0;
     uint32_t running_time = 0;
     uint16_t flow_i = 0;        // 当前flow迭代
+    uint16_t flow_k = 0;
     
     // A矩阵访问参数
     uint32_t A_address = 0;
@@ -101,8 +107,15 @@ struct StatusReg {
     uint8_t B_kernel = 0;
     uint16_t B_bytes = 0;
     
-    // C和D地址/参数
+    // C矩阵访问参数
     uint32_t C_address = 0;
+    uint32_t C_step = 0;
+    uint16_t C_count = 0;
+    uint8_t C_kernel = 0;
+    uint16_t C_bytes = 0;
+    uint8_t C_en = 0;
+
+    // D地址/参数
     uint32_t D_address = 0;
     uint32_t D_step = 0;
     uint16_t D_count = 0;
@@ -136,7 +149,8 @@ class KuiSau : public SimObject{
 		{
 			private:
 				KuiSau *owner;
-				PacketPtr blockedPacket = nullptr;
+				std::deque<PacketPtr> blockedPackets;
+				void trySendQueued();
 			protected:
 				bool recvTimingResp(PacketPtr pkt) override;
 				void recvRangeChange() override { std::cout << "recvRangeChange unimpl." << std::endl; }
@@ -211,6 +225,51 @@ class KuiSau : public SimObject{
 			WriteBack       // 写回结果
 		};
 		ExecutionState execState = ExecutionState::Idle;
+
+		enum class MemoryRequestKind {
+			Untagged,
+			MatrixA,
+			MatrixB,
+			VectorC,
+			OutputD,
+		};
+
+		struct MemorySenderState : public Packet::SenderState
+		{
+			MemoryRequestKind kind;
+			size_t segmentIndex;
+
+			explicit MemorySenderState(MemoryRequestKind request_kind,
+			                           size_t segment_index = 0)
+				: kind(request_kind), segmentIndex(segment_index)
+			{
+			}
+		};
+
+		struct FlowReadBuffer
+		{
+			std::vector<int32_t> data;
+			std::vector<bool> received;
+			size_t rowWidth = 0;
+			size_t segmentBytes = 0;
+
+			void reset(size_t segments, size_t row_width,
+			           size_t segment_bytes)
+			{
+				rowWidth = row_width;
+				segmentBytes = segment_bytes;
+				data.assign(segments * row_width, 0);
+				received.assign(segments, false);
+			}
+
+			void clear()
+			{
+				data.clear();
+				received.clear();
+				rowWidth = 0;
+				segmentBytes = 0;
+			}
+		};
 		
 		// ==================== 关键仿真组件 ====================
 		// mem port
@@ -221,7 +280,22 @@ class KuiSau : public SimObject{
 		EventFunctionWrapper nextTickEvent;
 		EventFunctionWrapper executeFlowEvent;
 		ClockDomain *clockDomain;
+		System *system;
+		RequestorID memoryRequestorId;
 		Cycles csrAccessCycles;
+		unsigned pendingFlowReads = 0;
+		unsigned pendingFlowWrites = 0;
+		FlowReadBuffer flowReadA;
+		FlowReadBuffer flowReadB;
+		FlowReadBuffer flowReadC;
+		Tick busyStartTick = 0;
+		bool busyAccountingActive = false;
+		bool traceReplayActive = false;
+		unsigned pendingTraceReplayReads = 0;
+		unsigned pendingTraceReplayWrites = 0;
+		unsigned traceReplayInFlight = 0;
+		static constexpr unsigned TraceReplayWindow = 128;
+		std::deque<std::pair<MemoryRequestKind, Addr>> traceReplayQueue;
 
 		// clock domain function
 		Tick getClockPeriod() const {
@@ -327,31 +401,106 @@ class KuiSau : public SimObject{
 		/**
 		 * 发送读请求到内存
 		 */
-		void sendMemoryRead(Addr addr, size_t size);
+		void sendMemoryRead(Addr addr, size_t size, MemoryRequestKind kind,
+		                    size_t segmentIndex = 0);
+
+		unsigned issueFlowReads(MemoryRequestKind kind, Addr base,
+		                        uint32_t step, uint16_t count,
+		                        uint8_t kernel, uint16_t bytes);
+		void storeFlowReadSegment(MemoryRequestKind kind, size_t segmentIndex,
+		                          const std::vector<int32_t> &data);
 		
 		/**
 		 * 发送写请求到内存
 		 */
-		void sendMemoryWrite(Addr addr, const std::vector<int32_t> &data);
+		void sendMemoryWrite(Addr addr, const std::vector<uint8_t> &data,
+		                     MemoryRequestKind kind);
 		
 		/**
 		 * SAU执行流程的主循环
 		 */
 		void executeFlow();
-	
-		// ==================== CSR处理相关 ====================
+
+			void processFlowData();
+			void completeFlowStep();
+			void finishBusyAccounting();
+			void recordAddressTrace(MemoryRequestKind kind, Addr addr);
+			void executeTraceReplay();
+			bool isLkssfullStdconv10Config() const;
+			unsigned lkssfullStdconv10InnerStart() const;
+			void issueLkssfullStdconv10RequestStream(unsigned flow);
+			void drainTraceReplayQueue();
+			void completeTraceReplayIfDone();
+
+			// ==================== CSR处理相关 ====================
 		unsigned int reschedule_interval = 2;
 		unsigned int schedule_interval = 10;
 		unsigned int maxStimulus = 1000;
 		unsigned int stimulusCount = 0;
+		bool randomTrafficRequestInFlight = false;
 		// 内部私有状态
 		enum class FlowState { ReadA, ReadB, Compute, Write };
 		FlowState flowState = FlowState::ReadA;
 
 		// RNG for deterministic address generation
-		const uint64_t rngSeed;
-		std::mt19937_64 rng;
-		std::uniform_int_distribution<Addr> addrDist;
+			const uint64_t rngSeed;
+			const bool enableRandomTraffic;
+			const bool rtlCReadGate;
+			const std::string traceReplayMode;
+			std::mt19937_64 rng;
+			std::uniform_int_distribution<Addr> addrDist;
+			bool sawTraceReadAAddr = false;
+			bool sawTraceReadBAddr = false;
+			bool sawTraceReadCAddr = false;
+			bool sawTraceWriteDAddr = false;
+			uint64_t traceReadAAddrXor = 0;
+			uint64_t traceReadBAddrXor = 0;
+			uint64_t traceReadCAddrXor = 0;
+			uint64_t traceWriteDAddrXor = 0;
+			bool sawTraceAddr = false;
+			uint64_t traceAddrXor = 0;
+			static constexpr uint64_t TraceOrderHashMask = (1ULL << 53) - 1;
+			static constexpr uint64_t TraceOrderHashInit =
+			    1469598103934665603ULL & TraceOrderHashMask;
+			uint64_t traceOrderHash = TraceOrderHashInit;
+
+			struct KuiSauStats : public statistics::Group
+			{
+				KuiSauStats(statistics::Group *parent);
+				statistics::Scalar csrReads;
+			statistics::Scalar csrWrites;
+			statistics::Scalar flowStarts;
+			statistics::Scalar flowCompletions;
+				statistics::Scalar flowReadSegments;
+				statistics::Scalar flowWriteSegments;
+				statistics::Scalar busyTicks;
+				statistics::Scalar flowReadARequests;
+				statistics::Scalar flowReadBRequests;
+				statistics::Scalar flowReadCRequests;
+				statistics::Scalar flowWriteDRequests;
+				statistics::Scalar flowReadAAddrFirst;
+				statistics::Scalar flowReadAAddrLast;
+				statistics::Scalar flowReadAAddrSum;
+				statistics::Scalar flowReadAAddrXor;
+				statistics::Scalar flowReadBAddrFirst;
+				statistics::Scalar flowReadBAddrLast;
+				statistics::Scalar flowReadBAddrSum;
+				statistics::Scalar flowReadBAddrXor;
+				statistics::Scalar flowReadCAddrFirst;
+				statistics::Scalar flowReadCAddrLast;
+				statistics::Scalar flowReadCAddrSum;
+				statistics::Scalar flowReadCAddrXor;
+				statistics::Scalar flowWriteDAddrFirst;
+				statistics::Scalar flowWriteDAddrLast;
+				statistics::Scalar flowWriteDAddrSum;
+				statistics::Scalar flowWriteDAddrXor;
+				statistics::Scalar flowTraceRequests;
+				statistics::Scalar flowTraceAddrFirst;
+				statistics::Scalar flowTraceAddrLast;
+				statistics::Scalar flowTraceAddrSum;
+				statistics::Scalar flowTraceAddrXor;
+				statistics::Scalar flowTraceOrderHash;
+			} stats;
 
 		// 内部私有变量
 		KuiPacket128* kui_data_pkt;
@@ -387,16 +536,28 @@ class KuiSau : public SimObject{
 			port_KuiSau_sendto_mem(params.name + ".port_KuiSau_sendto_mem", this),
 			port_KuiSau_getfrm_mem(params.name + ".port_KuiSau_getfrm_mem", this),
 			csrAddrRange(params.csr_addr_range),
-			nextTickEvent([this]{sendOneKuiPkt();},name()),		executeFlowEvent([this]{executeFlow();},name()),			clockDomain(params.clk_domain),
+			nextTickEvent([this]{sendOneKuiPkt();}, name()),
+			executeFlowEvent([this]{executeFlow();}, name()),
+			clockDomain(params.clk_domain),
+			system(params.system),
+			memoryRequestorId(params.system->getRequestorId(this, "mem")),
 			csrAccessCycles(params.csr_latency),
 			rngSeed(params.rng_seed),
+			enableRandomTraffic(params.enable_random_traffic),
+			rtlCReadGate(params.rtl_c_read_gate),
+			traceReplayMode(params.trace_replay),
 			rng(rngSeed == 0 ? 0xC001D00Du : rngSeed),
-			addrDist(0, Addr(0x10000 - 1))
+			addrDist(0, Addr(0x10000 - 1)),
+			stats(this)
 		{
 			// Check ClockDomain
 			fatal_if(!clockDomain, 
 					"%s: ClockDomain must be set! "
 					"Please set clk_domain in Python config.", 
+					name());
+			fatal_if(!system,
+					"%s: System must be set! "
+					"Please set system in Python config.",
 					name());
 			
 			// print check info
@@ -405,6 +566,9 @@ class KuiSau : public SimObject{
 			inform("  Clock frequency: %.2f GHz", 1000000.0 / getClockPeriod());
 			inform("  Interval: %d cycles = %lld ticks", Cycles(reschedule_interval), cyclesToTicks(Cycles(reschedule_interval)));
 			inform("  Max stimulus: %d", maxStimulus);
+			inform("  Random traffic: %s", enableRandomTraffic ? "enabled" : "disabled");
+			inform("  RTL C-read gate: %s", rtlCReadGate ? "enabled" : "disabled");
+			inform("  Trace replay: %s", traceReplayMode.empty() ? "disabled" : traceReplayMode.c_str());
 		}
 
 		// 发送函数

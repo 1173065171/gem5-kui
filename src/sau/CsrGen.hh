@@ -1,8 +1,10 @@
 #ifndef __CSR_GEN_HH__
 #define __CSR_GEN_HH__
 
+#include <deque>
 #include <iostream>
 #include <random>
+#include <vector>
 
 #include "params/CsrGen.hh"
 #include "sim/sim_object.hh"
@@ -66,10 +68,11 @@ class CsrGen : public SimObject
     struct CsrOp {
         CsrOpType type;
 		Addr addr;
-        uint32_t value; // 仅对 WRITE 有效
+        uint32_t value; // WRITE data or READ expected value.
     };
     std::vector<CsrOp> csrOps;
     unsigned currentOpIndex = 0;
+    std::deque<uint32_t> expectedReadValues;
 
     // Clock domain helpers
     Tick getClockPeriod() const { return clockDomain->clockPeriod(); }

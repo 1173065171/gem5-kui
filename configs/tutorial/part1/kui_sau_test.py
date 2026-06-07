@@ -52,7 +52,7 @@ class SauSystem(System):
         # 创建SAU模块
         self.seu = KuiSau(
             clk_domain=self.clk_domain,
-            csr_addr_range=AddrRange(0x2f000000, 0x2f000100),
+            csr_addr_range=AddrRange(0x2f000000, size=0x1000),
             csr_latency=5,  # 延迟周期数
             rng_seed=0
         )
@@ -97,7 +97,7 @@ def main():
     print(f"系统时钟频率:      1 GHz")
     print(f"内存大小:          {args.mem_size}")
     print(f"SAU矩阵大小:      {args.unit_size}x{args.unit_size}")
-    print(f"SAU CSR地址范围:  0x{0x2f000000:x} - 0x{0x2f000100:x}")
+    print(f"SAU CSR地址范围:  0x{0x2f000000:x} - 0x{0x2f001000:x}")
     print(f"CSR请求间隔:      {args.csr_interval} 周期")
     print(f"最大CSR请求数:    {args.max_csr_requests if args.max_csr_requests > 0 else '无限'}")
     print("="*80 + "\n")
@@ -118,4 +118,3 @@ def main():
 
 if __name__ == '__m5_main__':
     main()
-

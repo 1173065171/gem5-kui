@@ -5,6 +5,7 @@ Source('KuiSau.cc')
 Source('KuiSauRun.cc')
 Source('KuiPacket128.cc')
 Source('CsrGen.cc')
+Source('SauGoldenGen.cc')
 
 # 添加调试标志
 DebugFlag('KuiSau', "SAU (Systolic Array Unit) debug output")
@@ -14,4 +15,5 @@ DebugFlag('CsrGen', "CSR generator debug output")
 # 添加Python配置文件
 SimObject('KuiSau.py', sim_objects=['KuiSau'])
 SimObject('CsrGen.py', sim_objects=['CsrGen'])
+SimObject('SauGoldenGen.py', sim_objects=['SauGoldenGen'])
 # SAU.py不包含SimObject定义，仅作为文档

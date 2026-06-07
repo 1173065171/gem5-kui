@@ -54,16 +54,25 @@ CsrGen::CsrGen(const CsrGenParams &params)
 {
     fatal_if(!clockDomain, "%s: ClockDomain must be set!", name());
 
-    // 预定义 CSR 操作序列：写入几个值，然后读取
+    // 预定义 CSR 操作序列：覆盖 0x200-0x207 八个逻辑 CSR word。
+    // INS4_LSB 的 start bit 保持为 0，避免 readback 测试触发执行流。
     csrOps = {
-        {CsrOpType::WRITE, 0x2f000000, 0x12345678},
-        {CsrOpType::READ, 0x2f000000, 0},
-        {CsrOpType::WRITE, 0x2f000001, 0x34567812},
-        {CsrOpType::READ, 0x2f000001, 0},
-        {CsrOpType::WRITE, 0x2f000002, 0x56781234},
-        {CsrOpType::READ, 0x2f000002, 0},
-		{CsrOpType::WRITE, 0x2f000003, 0x78123456},
-        {CsrOpType::READ, 0x2f000003, 0},
+        {CsrOpType::WRITE, 0x2f000200, 0x00000024},
+        {CsrOpType::READ,  0x2f000200, 0x00000024},
+        {CsrOpType::WRITE, 0x2f000201, 0x00000014},
+        {CsrOpType::READ,  0x2f000201, 0x00000014},
+        {CsrOpType::WRITE, 0x2f000202, 0x00010203},
+        {CsrOpType::READ,  0x2f000202, 0x00010203},
+        {CsrOpType::WRITE, 0x2f000203, 0x00040506},
+        {CsrOpType::READ,  0x2f000203, 0x00040506},
+        {CsrOpType::WRITE, 0x2f000204, 0x00001000},
+        {CsrOpType::READ,  0x2f000204, 0x00001000},
+        {CsrOpType::WRITE, 0x2f000205, 0x00002000},
+        {CsrOpType::READ,  0x2f000205, 0x00002000},
+        {CsrOpType::WRITE, 0x2f000206, 0x00003000},
+        {CsrOpType::READ,  0x2f000206, 0x00003000},
+        {CsrOpType::WRITE, 0x2f000207, 0x04004000},
+        {CsrOpType::READ,  0x2f000207, 0x04004000},
     };
 
     inform("%s created:", name());
@@ -126,6 +135,7 @@ CsrGen::SendOneCsr()
     } else {
         pkt = Packet::createRead(req);
         pkt->allocate();
+        expectedReadValues.push_back(op.value);
         std::cout << "[CsrGen] Sending CSR Read @0x" << std::hex << op.addr 
                   << std::dec << std::endl;
     }
@@ -144,6 +154,13 @@ CsrGen::handleResponse(PacketPtr pkt)
         std::cout << "[CsrGen] CSR Write Response received" << std::endl;
     } else if (pkt->isRead()) {
         uint32_t value = pkt->getLE<uint32_t>();
+        panic_if(expectedReadValues.empty(),
+                 "%s: received unexpected CSR read response", name());
+        uint32_t expected = expectedReadValues.front();
+        expectedReadValues.pop_front();
+        panic_if(value != expected,
+                 "%s: CSR readback mismatch: got 0x%x expected 0x%x",
+                 name(), value, expected);
         std::cout << "[CsrGen] CSR Read Response: 0x" << std::hex << value 
                   << std::dec << std::endl;
     }

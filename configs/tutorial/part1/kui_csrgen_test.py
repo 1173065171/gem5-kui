@@ -34,6 +34,7 @@ system.membus = SystemXBar(
 system.kuisau = KuiSau(
     rng_seed=1234,
     clk_domain=system.clk_domain,
+    csr_addr_range=AddrRange(0x2f000000, size=0x1000),
     csr_latency=1,
 )
 
@@ -46,11 +47,11 @@ system.kuisau.port_KuiSau_sendto_mem = system.membus.cpu_side_ports
 system.csrgen = CsrGen(
     clk_domain=system.clk_domain,
     interval=10,        # 每 10 个周期发送一个 CSR 指令
-    max_requests=12,    # 发送 12 个指令后停止（6 对读写）
+    max_requests=16,    # 写读 8 个逻辑 CSR word
 )
 
 # 连接 CsrGen 的 CSR 端口到 KuiSau 的 CSR 响应端口
-system.kuisau.port_KuiSau_getfrm_mem = system.csrgen.csr_port
+system.csrgen.csr_port = system.kuisau.port_KuiSau_getfrm_mem
 
 # ============================================================================
 # 创建内存系统
@@ -77,7 +78,7 @@ print("=" * 80)
 print("KuiSau + CsrGen Integration Test")
 print("=" * 80)
 print(f"System Frequency: 1 GHz")
-print(f"KuiSau CSR Address: 0x2F000000")
+print(f"KuiSau CSR Address Range: 0x2F000000-0x2F000FFF")
 print(f"CsrGen Interval: 10 cycles")
 print(f"System Memory: 0x00000000-0x80000000 (2GB)")
 print("=" * 80)
@@ -86,7 +87,7 @@ print("Starting simulation...\n")
 # ============================================================================
 # 运行仿真
 # ============================================================================
-exit_event = m5.simulate(100000)
+exit_event = m5.simulate(200000)
 
 # ============================================================================
 # 打印结果

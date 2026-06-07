@@ -16,7 +16,11 @@ system.membus = SystemXBar(
 )
 
 # SAU 模块
-system.KuiSau = KuiSau(rng_seed=1234, clk_domain = system.clk_domain)
+system.KuiSau = KuiSau(
+    rng_seed=1234,
+    clk_domain=system.clk_domain,
+    enable_random_traffic=True,
+)
 
 # SAU request 端连接到 XBar
 system.KuiSau.port_KuiSau_sendto_mem = system.membus.cpu_side_ports
