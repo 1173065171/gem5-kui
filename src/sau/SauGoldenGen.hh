@@ -84,6 +84,7 @@ class SauGoldenGen : public SimObject
     const Cycles pollInterval;
     const unsigned maxBusyPolls;
     const std::string testCase;
+    const std::string fixtureDir;
 
     std::deque<Action> actions;
     bool requestInFlight = false;

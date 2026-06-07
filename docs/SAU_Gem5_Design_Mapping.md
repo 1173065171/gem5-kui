@@ -160,6 +160,18 @@ for the next gem5 functional model step. Because the `gem5-dev` container does
 not see the external NPU testcase path, use `--dump-runtime-dir` to create
 repo-local fixture files before wiring this into a gem5 regression.
 
+The first gem5-side fixture regression now exists. Generate
+`build/sau_lkssfull_runtime_fixture` with
+`python3 util/sau_lkssfull_fixture_data.py --dump-runtime-dir build/sau_lkssfull_runtime_fixture`,
+then run
+`configs/tutorial/part1/kui_sau_lkssfull_stdconv_fixture_scheduler_test.py`.
+`SauGoldenGen(test_case="lkssfull_sau_stdconv_10_fixture_trace")` loads the
+real input, bias, and kernel heap blobs into gem5 memory, clears the output
+heap, and issues the 16 captured CSR starts through the ordinary scheduler
+matching path. The current check proves request address/order equivalence with
+real fixture data loaded; D bytes are still zero-write plumbing and need the
+next functional conversion step before comparing against `output_expected.bin`.
+
 State variables now represented in gem5 and still needing wider validation:
 
 - `flow_k`

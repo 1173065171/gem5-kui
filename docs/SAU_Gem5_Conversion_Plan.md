@@ -836,12 +836,32 @@ The generated files are `input_heap.bin` (8064 bytes at `0x20025060`),
 `0x20024c30`), `output_expected.bin` (8192 bytes at `0x20022c20`), plus
 `manifest.json`.
 
+The first gem5-side fixture scheduler regression now loads those runtime blobs.
+`SauGoldenGen(test_case="lkssfull_sau_stdconv_10_fixture_trace")` takes a
+`fixture_dir`, writes input/bias/kernel into the firmware heap addresses, clears
+the output heap, and then issues the 16 captured CSR starts. The tutorial config
+is
+`configs/tutorial/part1/kui_sau_lkssfull_stdconv_fixture_scheduler_test.py`.
+Verified checkpoint:
+
+```sh
+python3 util/sau_lkssfull_fixture_data.py --dump-runtime-dir build/sau_lkssfull_runtime_fixture
+python3 -m py_compile src/sau/SauGoldenGen.py configs/tutorial/part1/kui_sau_lkssfull_stdconv_fixture_scheduler_test.py util/sau_lkssfull_fixture_data.py
+docker exec -w /gem5/gem5-kui gem5-dev scons build/RISCV/gem5.opt -j2
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_lkssfull_stdconv_fixture_scheduler ./configs/tutorial/part1/kui_sau_lkssfull_stdconv_fixture_scheduler_test.py
+python3 util/sau_trace_summary.py --case lkssfull_sau_stdconv_10 --gem5-stats m5out/sau_lkssfull_stdconv_fixture_scheduler/stats.txt
+```
+
+The checker reports all A/B/C/D request counts, first/last addresses, sum/xor
+summaries, total request count, and `flowTraceOrderHash=8164653382730703` as
+OK. This is still an address/order proof with real fixture data loaded, not a
+functional D-output proof.
+
 ## Current Next Actions
 
-1. Keep the trace replay and CSR-derived scheduler path as regression anchors
-   while adding functional D-data checking for this firmware-derived stdconv
-   case. Use `util/sau_lkssfull_fixture_data.py` as the data-source and
-   repo-local fixture materialization anchor.
+1. Replace the lkssfull zero-write replay plumbing with real functional
+   compute/writeback, using `output_expected.bin`, the trace payload hashes, and
+   sorted `output_sa` coverage as regression anchors.
 2. Produce or capture RTL `mem_addr.sv` traces for the RTL-gated representative
    CSR vectors as CSV/text, then compare per-kind first/last/sum/xor summaries
    while accounting for RTL horizontal=B and vertical=A naming.

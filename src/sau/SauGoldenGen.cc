@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 
@@ -21,11 +22,48 @@ constexpr Addr AOffset = 0x0000;
 constexpr Addr BOffset = 0x1000;
 constexpr Addr COffset = 0x2000;
 constexpr Addr DOffset = 0x3000;
+constexpr Addr LkssInputOffset = 0x25060;
+constexpr Addr LkssBiasOffset = 0x25030;
+constexpr Addr LkssKernelOffset = 0x24c30;
+constexpr Addr LkssOutputOffset = 0x22c20;
 constexpr unsigned UnitSize = 16;
 constexpr size_t MatrixBytes = UnitSize * UnitSize;
 constexpr size_t ShiftMatrixBytes = MatrixBytes * 2;
 constexpr size_t CBytes = UnitSize * 2;
+constexpr size_t LkssInputBytes = 0x1f80;
+constexpr size_t LkssBiasBytes = 32;
+constexpr size_t LkssKernelBytes = 1008;
+constexpr size_t LkssOutputBytes = 0x2000;
 constexpr uint32_t ShiftPairDIns2Lsb = 0x00020201;
+
+std::string
+fixturePath(const std::string &dir, const std::string &filename)
+{
+    if (dir.empty()) {
+        fatal("lkssfull fixture_dir must be set for fixture test cases");
+    }
+    if (dir.back() == '/') {
+        return dir + filename;
+    }
+    return dir + "/" + filename;
+}
+
+std::vector<uint8_t>
+readBinaryFile(const std::string &path, size_t expectedSize)
+{
+    std::ifstream input(path, std::ios::binary);
+    fatal_if(!input, "could not open fixture file %s", path.c_str());
+
+    std::vector<uint8_t> bytes(
+        (std::istreambuf_iterator<char>(input)),
+        std::istreambuf_iterator<char>());
+    fatal_if(bytes.size() != expectedSize,
+             "fixture file %s size mismatch got %llu expected %llu",
+             path.c_str(),
+             static_cast<unsigned long long>(bytes.size()),
+             static_cast<unsigned long long>(expectedSize));
+    return bytes;
+}
 
 std::vector<uint8_t>
 makeZeroBytes(size_t size = MatrixBytes)
@@ -536,7 +574,8 @@ SauGoldenGen::SauGoldenGen(const SauGoldenGenParams &params)
       interval(params.interval),
       pollInterval(params.poll_interval),
       maxBusyPolls(params.max_busy_polls),
-      testCase(params.test_case)
+      testCase(params.test_case),
+      fixtureDir(params.fixture_dir)
 {
     fatal_if(!clockDomain, "%s: ClockDomain must be set", name());
     fatal_if(!system, "%s: System must be set", name());
@@ -584,7 +623,8 @@ SauGoldenGen::buildScript()
     uint32_t ins2Lsb = 0x00010101;
     bool writeC = false;
     bool retainSequence = false;
-    bool traceReplayOnly = false;
+    bool useDefaultMemoryScript = true;
+    bool useLkssfullTraceStarts = false;
 
     if (testCase == "gemm") {
         // This vector is intentionally simple but still exercises the SAU.py
@@ -890,13 +930,35 @@ SauGoldenGen::buildScript()
         // Trace-only driver for the external RTL smoke case. This emits the
         // 16 normconv-like CSR starts observed in firmware; KuiSau's trace
         // replay mode turns each start into one captured RTL request flow.
-        traceReplayOnly = true;
+        useDefaultMemoryScript = false;
+        useLkssfullTraceStarts = true;
+    } else if (testCase == "lkssfull_sau_stdconv_10_fixture_trace") {
+        // Data-loaded version of the external RTL smoke case. It writes the
+        // firmware runtime heap blobs before issuing the same 16 CSR starts.
+        // The current KuiSau path still validates address/order only.
+        useDefaultMemoryScript = false;
+        useLkssfullTraceStarts = true;
+        actions.push_back({
+            ActionType::MemWrite, SauBase + LkssInputOffset,
+            readBinaryFile(fixturePath(fixtureDir, "input_heap.bin"),
+                           LkssInputBytes)});
+        actions.push_back({
+            ActionType::MemWrite, SauBase + LkssBiasOffset,
+            readBinaryFile(fixturePath(fixtureDir, "bias_heap.bin"),
+                           LkssBiasBytes)});
+        actions.push_back({
+            ActionType::MemWrite, SauBase + LkssKernelOffset,
+            readBinaryFile(fixturePath(fixtureDir, "kernel_heap.bin"),
+                           LkssKernelBytes)});
+        actions.push_back({
+            ActionType::MemWrite, SauBase + LkssOutputOffset,
+            makeZeroBytes(LkssOutputBytes)});
     } else {
         fatal("%s: unsupported golden test case '%s'", name(),
               testCase.c_str());
     }
 
-    if (!traceReplayOnly) {
+    if (useDefaultMemoryScript) {
         actions.push_back({ActionType::MemWrite, SauBase + AOffset, aBytes});
         actions.push_back({ActionType::MemWrite, SauBase + BOffset,
                            activeBBytes});
@@ -941,7 +1003,7 @@ SauGoldenGen::buildScript()
         }
     };
 
-    if (traceReplayOnly) {
+    if (useLkssfullTraceStarts) {
         for (uint32_t flow = 0; flow < 16; ++flow) {
             const uint32_t d_offset = 0x22c20 + flow * 0x20;
             appendInstructionWords(

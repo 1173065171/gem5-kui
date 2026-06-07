@@ -35,7 +35,11 @@ class SauGoldenGen(SimObject):
         "depthwise_conv_stride_dequant_mixed, "
         "depthwise_conv_stride_shift_dequant_mixed, gemm_out_transpose, "
         "gemm_retain, gemm_transpose_retain, or "
-        "lkssfull_sau_stdconv_10_trace")
+        "lkssfull_sau_stdconv_10_trace/"
+        "lkssfull_sau_stdconv_10_fixture_trace")
+    fixture_dir = Param.String(
+        "",
+        "Optional directory containing external fixture binary blobs")
 
     mem_port = RequestPort("Memory request port")
     csr_port = RequestPort("CSR request port")

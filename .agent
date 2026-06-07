@@ -103,6 +103,10 @@ on integrating a KuiLoong NPU SAU (Systolic Array Unit) model into gem5.
   `docs/SAU_Gem5_Conversion_Plan.md`.
 - The current software/RTL/gem5 mapping is recorded in
   `docs/SAU_Gem5_Design_Mapping.md`.
+- `configs/tutorial/part1/kui_sau_lkssfull_stdconv_fixture_scheduler_test.py`
+  loads repo-local lkssfull runtime heap blobs through
+  `SauGoldenGen(test_case="lkssfull_sau_stdconv_10_fixture_trace")` and checks
+  the CSR-derived scheduler path against the RTL trace address/order summary.
 
 ## Existing SAU Implementation
 
@@ -127,7 +131,9 @@ on integrating a KuiLoong NPU SAU (Systolic Array Unit) model into gem5.
   `depthwise_conv_stride_shift`,
   `depthwise_conv_dequant_mixed`, `depthwise_conv_stride_dequant_mixed`,
   `depthwise_conv_stride_shift_dequant_mixed`,
-  `gemm_retain`, `gemm_transpose_retain`).
+  `gemm_retain`, `gemm_transpose_retain`,
+  `lkssfull_sau_stdconv_10_trace`,
+  `lkssfull_sau_stdconv_10_fixture_trace`).
 
 The current `KuiSau::startup()` schedules a standalone random memory FSM through
 `sendOneKuiPkt()` only when `enable_random_traffic=True`. CSR-triggered
@@ -1226,13 +1232,54 @@ sha256sum /tmp/sau_lkssfull_runtime_fixture/*.bin
 
 Next best code step:
 
-1. Add a gem5-side stdconv fixture loader that writes reconstructed
-   input/bias/kernel heap buffers to their runtime addresses.
-2. Replace the lkssfull zero-write replay plumbing with real functional
+1. Replace the lkssfull zero-write replay plumbing with real functional
    compute/writeback, using the trace payload hashes and sorted `output_sa`
    coverage as regression anchors.
-3. Keep `sau_trace_summary.py` for address/order equivalence while using
+2. Keep `sau_trace_summary.py` for address/order equivalence while using
    `sau_lkssfull_fixture_data.py` for data-layout equivalence.
+
+Latest continuation slice:
+
+- Added a gem5-side fixture loader path for the external
+  `lkssfull_sau_stdconv_10` data. `SauGoldenGen` now has `fixture_dir` and
+  `test_case="lkssfull_sau_stdconv_10_fixture_trace"`, which reads
+  `input_heap.bin`, `bias_heap.bin`, and `kernel_heap.bin`, writes them to
+  `0x20025060`, `0x20025030`, and `0x20024c30`, clears the output heap at
+  `0x20022c20`, then issues the same 16 CSR starts as the trace-only case.
+- Added
+  `configs/tutorial/part1/kui_sau_lkssfull_stdconv_fixture_scheduler_test.py`
+  to run that data-loaded path through ordinary `KuiSau` CSR-derived scheduler
+  matching instead of `trace_replay`.
+- Generated repo-local runtime fixture data in
+  `build/sau_lkssfull_runtime_fixture` with
+  `python3 util/sau_lkssfull_fixture_data.py --dump-runtime-dir build/sau_lkssfull_runtime_fixture`.
+  The binary fixture directory is generated/ignored; it is not intended to be
+  committed yet.
+- Verified the new path with:
+
+```sh
+python3 util/sau_lkssfull_fixture_data.py --dump-runtime-dir build/sau_lkssfull_runtime_fixture
+python3 -m py_compile src/sau/SauGoldenGen.py configs/tutorial/part1/kui_sau_lkssfull_stdconv_fixture_scheduler_test.py util/sau_lkssfull_fixture_data.py
+git diff --check -- . ':(exclude)src/sau/reference'
+docker exec -w /gem5/gem5-kui gem5-dev scons build/RISCV/gem5.opt -j2
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_lkssfull_stdconv_fixture_scheduler ./configs/tutorial/part1/kui_sau_lkssfull_stdconv_fixture_scheduler_test.py
+python3 util/sau_trace_summary.py --case lkssfull_sau_stdconv_10 --gem5-stats m5out/sau_lkssfull_stdconv_fixture_scheduler/stats.txt
+```
+
+The summary checker reports all A/B/C/D request counts, first/last addresses,
+sum/xor summaries, total request count, and `flowTraceOrderHash=8164653382730703`
+as OK. This remains an address/order regression with real heap input data
+loaded; it is not yet a functional D-output proof.
+
+Next best code step:
+
+1. Replace the lkssfull zero-write replay plumbing with real functional
+   compute/writeback, using `output_expected.bin` plus the trace payload hashes
+   as regression anchors.
+2. Add a gem5 memory read/check action for the sorted 8192-byte D oracle once
+   the functional writeback path is producing bytes.
+3. Keep generated fixture blobs out of git unless we intentionally add a small,
+   license-safe regression fixture.
 
 ## Known Local State
 
