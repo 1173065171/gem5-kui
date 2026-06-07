@@ -820,11 +820,28 @@ sorted by address, and that sorted span matches `output_sa` exactly with SHA256
 This is a data-layout proof for the RTL trace, not yet a gem5 functional-output
 proof.
 
+The `gem5-dev` container cannot see the external
+`/home/zbn/code/npu_lpnpu/...` testcase path, so a gem5 regression needs
+repo-local fixture files or generated data. The fixture helper can materialize
+the runtime heap blobs without adding them to the repo yet:
+
+```sh
+python3 util/sau_lkssfull_fixture_data.py \
+  --rtl-trace /home/zbn/code/npu_lpnpu/sim/vcs/build/mikui_dma/sau_mem_addr_trace.csv \
+  --dump-runtime-dir /tmp/sau_lkssfull_runtime_fixture
+```
+
+The generated files are `input_heap.bin` (8064 bytes at `0x20025060`),
+`bias_heap.bin` (32 bytes at `0x20025030`), `kernel_heap.bin` (1008 bytes at
+`0x20024c30`), `output_expected.bin` (8192 bytes at `0x20022c20`), plus
+`manifest.json`.
+
 ## Current Next Actions
 
 1. Keep the trace replay and CSR-derived scheduler path as regression anchors
    while adding functional D-data checking for this firmware-derived stdconv
-   case. Use `util/sau_lkssfull_fixture_data.py` as the data-source anchor.
+   case. Use `util/sau_lkssfull_fixture_data.py` as the data-source and
+   repo-local fixture materialization anchor.
 2. Produce or capture RTL `mem_addr.sv` traces for the RTL-gated representative
    CSR vectors as CSV/text, then compare per-kind first/last/sum/xor summaries
    while accounting for RTL horizontal=B and vertical=A naming.

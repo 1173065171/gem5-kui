@@ -156,7 +156,9 @@ B reads 992 input segments; A reads 2000 kernel segments, 16 input-tail
 segments, and 16 bias segments; C reads 16 kernel-tail segments and 16 bias
 segments. The 512 D chunks cover the output heap contiguously when sorted by
 address, matching `output_sa` exactly. This gives a precise data-layout oracle
-for the next gem5 functional model step.
+for the next gem5 functional model step. Because the `gem5-dev` container does
+not see the external NPU testcase path, use `--dump-runtime-dir` to create
+repo-local fixture files before wiring this into a gem5 regression.
 
 State variables now represented in gem5 and still needing wider validation:
 

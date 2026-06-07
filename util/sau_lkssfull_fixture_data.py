@@ -244,7 +244,41 @@ def summarize_trace_data(trace_path, segment_blobs):
     return trace_data
 
 
-def build_summary(case_dir, rtl_trace=None):
+def dump_runtime_files(out_dir, segment_blobs):
+    out_dir.mkdir(parents=True, exist_ok=True)
+    ranges = runtime_ranges(segment_blobs)
+    files = [
+        ("input_heap.bin", "input_heap", "input_sa"),
+        ("bias_heap.bin", "bias_heap", "bias_sa"),
+        ("kernel_heap.bin", "kernel_heap", "kernel_sa"),
+        ("output_expected.bin", "output_heap", "output_sa"),
+    ]
+    manifest = {"directory": str(out_dir), "files": {}}
+
+    for filename, heap_name, segment_name in files:
+        path = out_dir / filename
+        blob = segment_blobs[segment_name]
+        path.write_bytes(blob)
+        addr, _runtime_blob = ranges[heap_name]
+        manifest["files"][filename] = {
+            "heap_name": heap_name,
+            "segment_name": segment_name,
+            "addr": addr,
+            "low20": addr & 0xFFFFF,
+            "size": len(blob),
+            "sha256": hashlib.sha256(blob).hexdigest(),
+        }
+
+    manifest_path = out_dir / "manifest.json"
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    manifest["manifest"] = str(manifest_path)
+    return manifest
+
+
+def build_summary(case_dir, rtl_trace=None, return_blobs=False):
     symbol_path = case_dir / "elf_symbols.txt"
     memory_path = case_dir / "globala.hex"
     if not symbol_path.is_file():
@@ -273,6 +307,8 @@ def build_summary(case_dir, rtl_trace=None):
     }
     if rtl_trace is not None:
         summary["rtl_trace_data"] = summarize_trace_data(rtl_trace, segment_blobs)
+    if return_blobs:
+        return summary, segment_blobs
     return summary
 
 
@@ -332,6 +368,14 @@ def print_text(summary):
         )
         if trace_data["missing"]:
             print(f"  missing_payloads={len(trace_data['missing'])}")
+    if "dump_runtime_files" in summary:
+        dump = summary["dump_runtime_files"]
+        print(f"dump_runtime_files: {dump['directory']}")
+        for filename, info in dump["files"].items():
+            print(
+                f"  {filename}: addr=0x{info['addr']:08x} "
+                f"size={info['size']} sha256={info['sha256']}"
+            )
 
 
 def main():
@@ -352,9 +396,22 @@ def main():
         type=Path,
         help="optional RTL sau_mem_addr_trace.csv to summarize payload data",
     )
+    parser.add_argument(
+        "--dump-runtime-dir",
+        type=Path,
+        help="optional output directory for runtime heap fixture binary files",
+    )
     args = parser.parse_args()
 
-    summary = build_summary(args.case_dir, args.rtl_trace)
+    if args.dump_runtime_dir is not None:
+        summary, segment_blobs = build_summary(
+            args.case_dir, args.rtl_trace, return_blobs=True
+        )
+        summary["dump_runtime_files"] = dump_runtime_files(
+            args.dump_runtime_dir, segment_blobs
+        )
+    else:
+        summary = build_summary(args.case_dir, args.rtl_trace)
     if args.json:
         print(json.dumps(summary, indent=2, sort_keys=True))
     else:

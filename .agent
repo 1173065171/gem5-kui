@@ -1206,6 +1206,13 @@ Latest continuation slice:
 - This is a data-layout proof for the RTL trace, not yet a gem5 functional
   D-output proof. `KuiSau::issueLkssfullStdconv10RequestStream()` still uses
   trace-replay drain plumbing and zero D writes.
+- Confirmed `gem5-dev` cannot access the host external testcase path under
+  `/home/zbn/code/npu_lpnpu/...`, so gem5-side regression work needs repo-local
+  fixture data or generated data. Added `--dump-runtime-dir` to materialize
+  `input_heap.bin`, `bias_heap.bin`, `kernel_heap.bin`,
+  `output_expected.bin`, and `manifest.json`. Verified with
+  `/tmp/sau_lkssfull_runtime_fixture`; the file sizes are 8064, 32, 1008, and
+  8192 bytes, with hashes matching the source blobs.
 - Verified commands:
 
 ```sh
@@ -1213,6 +1220,8 @@ python3 -m py_compile util/sau_lkssfull_fixture_data.py
 python3 util/sau_lkssfull_fixture_data.py
 python3 util/sau_lkssfull_fixture_data.py --rtl-trace /home/zbn/code/npu_lpnpu/sim/vcs/build/mikui_dma/sau_mem_addr_trace.csv
 python3 util/sau_lkssfull_fixture_data.py --rtl-trace /home/zbn/code/npu_lpnpu/sim/vcs/build/mikui_dma/sau_mem_addr_trace.csv --json
+python3 util/sau_lkssfull_fixture_data.py --rtl-trace /home/zbn/code/npu_lpnpu/sim/vcs/build/mikui_dma/sau_mem_addr_trace.csv --dump-runtime-dir /tmp/sau_lkssfull_runtime_fixture
+sha256sum /tmp/sau_lkssfull_runtime_fixture/*.bin
 ```
 
 Next best code step:
