@@ -761,11 +761,33 @@ Firmware clues from the testcase:
 - The closest software source for CSR packing is
   `/home/zbn/code/toolchain_workdir/workdir/gitee_toolchain/kuiloong-NN/acenn/matrix/conv2d.hpp`.
 
+`util/sau_lkssfull_fixture_data.py` parses this external testcase's
+`elf_symbols.txt` and `globala.hex` into the firmware data blobs. The hex words
+are little-endian memory words, and `__rodata_start__` is `0x20010000`. Current
+blob summaries are:
+
+- `bias_sa`: 32 bytes, SHA256
+  `8f20a621587b281f64351aee82885ba74d94e37fc272ebfc20bc32c762b27c60`.
+- `kernel_sa`: 1008 bytes, SHA256
+  `db2cea75e874aa67cea4e4aeb9868328f0574dd3a6e41451330b08370ce046c7`.
+- `output_sa`: 8192 bytes, SHA256
+  `e1b19a4576eb5bf9a299a9f4944444f71c8ba2b5dbab8b1a9223286f2a8877f2`;
+  this is 4096 signed int16 values, all nonzero, with range
+  `-32768..32767`.
+- `input_sa`: 8064 bytes, SHA256
+  `fefdb0c0a2d2c464ea6a16c990a68362cd88877f4f87d7756020567c7121a6e4`.
+
+This confirms the firmware's full D-data oracle is available in rodata. The
+remaining modeling work is to map the firmware copy/split buffers into the SAU
+local address layout used by the CSR request stream; the CSR-local A/B/C/D
+addresses are not a direct non-overlapping projection of the rodata symbol
+addresses.
+
 ## Current Next Actions
 
 1. Keep the trace replay and CSR-derived scheduler path as regression anchors
-   while adding functional D-data
-   checking for this firmware-derived stdconv case.
+   while adding functional D-data checking for this firmware-derived stdconv
+   case. Use `util/sau_lkssfull_fixture_data.py` as the data-source anchor.
 2. Produce or capture RTL `mem_addr.sv` traces for the RTL-gated representative
    CSR vectors as CSV/text, then compare per-kind first/last/sum/xor summaries
    while accounting for RTL horizontal=B and vertical=A naming.

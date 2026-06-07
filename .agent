@@ -1139,6 +1139,43 @@ Next best code step:
 2. Tighten `D_wstrb` behavior for unit-size 8 and remaining shift/dequant modes.
 3. Reduce the noisy per-response logging once the address-order path is stable.
 
+Latest continuation slice:
+
+- Added `util/sau_lkssfull_fixture_data.py` to parse the external
+  `lkssfull_sau_stdconv/10_sau_regress_INT16_SAU_NORMCONV_TEST_ID_0`
+  firmware testcase. The helper reads `elf_symbols.txt`, decodes
+  `globala.hex` as little-endian 32-bit memory words from `__rodata_start__`,
+  and summarizes the known firmware blobs.
+- Verified data-source summaries:
+  `bias_sa` is 32 bytes with SHA256
+  `8f20a621587b281f64351aee82885ba74d94e37fc272ebfc20bc32c762b27c60`;
+  `kernel_sa` is 1008 bytes with SHA256
+  `db2cea75e874aa67cea4e4aeb9868328f0574dd3a6e41451330b08370ce046c7`;
+  `output_sa` is 8192 bytes with SHA256
+  `e1b19a4576eb5bf9a299a9f4944444f71c8ba2b5dbab8b1a9223286f2a8877f2`;
+  `input_sa` is 8064 bytes with SHA256
+  `fefdb0c0a2d2c464ea6a16c990a68362cd88877f4f87d7756020567c7121a6e4`.
+- `output_sa` is confirmed to be a real 4096-halfword D oracle: all 4096
+  signed int16 values are nonzero and span `-32768..32767`. This confirms the
+  golden output exists in firmware rodata, but the gem5 functional D-data check
+  still needs the firmware copy/split-to-SAU-local mapping because the CSR-local
+  A/B/C/D addresses are not a direct non-overlapping projection of the rodata
+  symbol addresses.
+- Verified commands:
+
+```sh
+python3 -m py_compile util/sau_lkssfull_fixture_data.py
+python3 util/sau_lkssfull_fixture_data.py
+```
+
+Next best code step:
+
+1. Map the firmware copy/split buffers into the CSR-local A/B/C/D memory layout
+   used by `lkssfull_sau_stdconv_10`.
+2. Use the extracted `output_sa` oracle for a real D-data check once that
+   memory layout is reproduced in gem5.
+3. Tighten `D_wstrb` behavior for unit-size 8 and remaining shift/dequant modes.
+
 ## Known Local State
 
 - `docs/my_gem5.md` contains the current gem5 test record.

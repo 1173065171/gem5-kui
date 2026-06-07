@@ -131,6 +131,18 @@ address shape, `D + logical_row*D_step + lane*unitSize`; it still needs
 conv-reuse B/A request ordering, unit-size 8 write-mask tightening, and
 functional D-data checking for this larger stdconv16 case.
 
+The firmware testcase also contains a full data oracle in rodata. The helper
+`util/sau_lkssfull_fixture_data.py` parses
+`10_sau_regress_INT16_SAU_NORMCONV_TEST_ID_0/elf_symbols.txt` plus
+`globala.hex` and reports `bias_sa` (32 bytes), `kernel_sa` (1008 bytes),
+`output_sa` (8192 bytes), and `input_sa` (8064 bytes). The current
+`output_sa` SHA256 is
+`e1b19a4576eb5bf9a299a9f4944444f71c8ba2b5dbab8b1a9223286f2a8877f2`; it is
+4096 signed int16 values spanning `-32768..32767`. This proves the D-data
+golden source exists, but the conversion still needs the firmware
+copy/split-to-SAU-local mapping before that oracle can be used as a real gem5
+functional check.
+
 State variables now represented in gem5 and still needing wider validation:
 
 - `flow_k`
