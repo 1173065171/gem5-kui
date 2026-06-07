@@ -31,6 +31,15 @@ SYMBOL_SUFFIXES = {
     "input_sa": "input_sa",
 }
 
+HEAP_BASE = 0x20020000
+HEAP_INITIAL_UNITS = 1790
+HEAP_ALLOCS = [
+    ("input_heap", 0x1F80),
+    ("bias_heap", 32),
+    ("kernel_heap", 1008),
+    ("output_heap", 0x2000),
+]
+
 
 def parse_int(text):
     return int(text.strip().replace("_", ""), 16)
@@ -77,6 +86,27 @@ def parse_word_hex(path):
             word = int(text, 16)
             data.extend(word.to_bytes(4, "little"))
     return bytes(data)
+
+
+def heap_layout():
+    free_units = HEAP_INITIAL_UNITS
+    layout = []
+    for name, size in HEAP_ALLOCS:
+        units = ((size + 15) & ~15) // 16 + 1
+        free_units -= units
+        header = HEAP_BASE + free_units * 16
+        addr = header + 16
+        layout.append(
+            {
+                "name": name,
+                "requested_size": size,
+                "allocation_units": units,
+                "header": header,
+                "addr": addr,
+                "low20": addr & 0xFFFFF,
+            }
+        )
+    return layout
 
 
 def blob_summary(name, symbol, addr, size, rodata_base, memory):
@@ -141,6 +171,7 @@ def build_summary(case_dir):
         "rodata_base": rodata_base,
         "memory_bytes": len(memory),
         "segments": segments,
+        "heap_layout": heap_layout(),
     }
 
 
@@ -167,6 +198,15 @@ def print_text(summary):
                 f"count={stats['count']} min={stats['min']} "
                 f"max={stats['max']} nonzero={stats['nonzero']}"
             )
+    print("heap_layout:")
+    for alloc in summary["heap_layout"]:
+        print(
+            f"  {alloc['name']}: size={alloc['requested_size']} "
+            f"units={alloc['allocation_units']} "
+            f"header=0x{alloc['header']:08x} "
+            f"addr=0x{alloc['addr']:08x} "
+            f"low20=0x{alloc['low20']:05x}"
+        )
 
 
 def main():

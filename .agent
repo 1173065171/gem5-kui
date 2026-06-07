@@ -1161,6 +1161,14 @@ Latest continuation slice:
   still needs the firmware copy/split-to-SAU-local mapping because the CSR-local
   A/B/C/D addresses are not a direct non-overlapping projection of the rodata
   symbol addresses.
+- Extended the helper with the first-fit heap layout from the firmware malloc
+  sequence. It derives the same addresses printed in the external
+  `minsys_uart.log`: input `0x20025060`, bias `0x20025030`, kernel
+  `0x20024c30`, and output `0x20022c20`. This explains the D trace span and
+  also exposes a naming trap: the RTL traced B/horizontal stream starts from the
+  input buffer, the A/vertical reuse window starts from the kernel buffer, the
+  late A read reaches the input tail (`0x20026c00 + n*0x40`), and the C read
+  pair is `0x20025010/0x20025030`, spanning kernel tail plus bias start.
 - Verified commands:
 
 ```sh

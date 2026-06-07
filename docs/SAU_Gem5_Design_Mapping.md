@@ -143,6 +143,14 @@ golden source exists, but the conversion still needs the firmware
 copy/split-to-SAU-local mapping before that oracle can be used as a real gem5
 functional check.
 
+For the captured firmware case, the first-fit heap returns input
+`0x20025060`, bias `0x20025030`, kernel `0x20024c30`, and output
+`0x20022c20`. The RTL trace kind names are request-stream tags, not direct
+semantic object names: the traced B/horizontal stream starts at the input
+buffer, the traced A/vertical reuse window starts at the kernel buffer, and the
+C/bias read pair is `0x20025010/0x20025030`. Keep this role mapping explicit
+when converting the trace-aligned path into a functional D-data test.
+
 State variables now represented in gem5 and still needing wider validation:
 
 - `flow_k`

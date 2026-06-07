@@ -777,11 +777,22 @@ blob summaries are:
 - `input_sa`: 8064 bytes, SHA256
   `fefdb0c0a2d2c464ea6a16c990a68362cd88877f4f87d7756020567c7121a6e4`.
 
-This confirms the firmware's full D-data oracle is available in rodata. The
-remaining modeling work is to map the firmware copy/split buffers into the SAU
-local address layout used by the CSR request stream; the CSR-local A/B/C/D
-addresses are not a direct non-overlapping projection of the rodata symbol
-addresses.
+The same helper also derives the first-fit heap layout used by the firmware:
+
+- input buffer: `0x20025060..0x20026fdf`
+- bias buffer: `0x20025030..0x2002504f`
+- kernel buffer: `0x20024c30..0x2002501f`
+- output buffer: `0x20022c20..0x20024c1f`
+
+This confirms the firmware's full D-data oracle is available in rodata and that
+the runtime D buffer aligns with the captured D trace span. The RTL read stream
+does not map one-to-one onto simple `input/kernel/bias` names: the traced B
+stream starts at the input buffer (`0x20025060`), the traced A reuse window is
+the kernel buffer (`0x20024c30`), the late A read reaches the input tail
+(`0x20026c00 + n*0x40`), and the two C reads are
+`0x20025010/0x20025030`, spanning the kernel tail and bias start. The remaining
+modeling work is to reproduce that firmware/RTL data layout in gem5 before
+using `output_sa` as a functional D-data check.
 
 ## Current Next Actions
 
