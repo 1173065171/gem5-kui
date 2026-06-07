@@ -7,9 +7,9 @@ Generate the fixture directory before running this config:
 python3 util/sau_lkssfull_fixture_data.py \
   --dump-runtime-dir build/sau_lkssfull_runtime_fixture
 
-This still validates request address/order only. The real input/bias/kernel
-heap blobs are present in gem5 memory, but the current KuiSau lkssfull path uses
-trace-stream write plumbing and does not compute D bytes yet.
+This validates request address/order and replays the captured output payload
+for a full 8192-byte D memory check. The current KuiSau lkssfull path still
+uses trace-stream payload plumbing rather than computing D bytes.
 """
 
 import m5
@@ -34,6 +34,9 @@ system.kuisau = KuiSau(
     clk_domain=system.clk_domain,
     csr_addr_range=AddrRange(0x2f000000, size=0x1000),
     csr_latency=1,
+    lkssfull_output_fixture=(
+        "build/sau_lkssfull_runtime_fixture/output_expected.bin"
+    ),
 )
 system.kuisau.port_KuiSau_sendto_mem = system.membus.cpu_side_ports
 
@@ -64,6 +67,7 @@ print("=" * 80)
 print("CSR range: 0x2F000000-0x2F000FFF")
 print("Trace replay: disabled")
 print("Fixture dir: build/sau_lkssfull_runtime_fixture")
+print("Output fixture: output_expected.bin")
 print("Expected request order per flow: B,A,C,A,D")
 print("=" * 80)
 

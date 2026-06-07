@@ -4,6 +4,7 @@
 #include "mem/packet_access.hh"
 #include "mem/request.hh"
 #include <algorithm>
+#include <fstream>
 #include <random>
 #include <cmath>
 
@@ -1103,6 +1104,66 @@ KuiSau::outputWriteAddress(size_t packedRow) const
     return status.D_address + packedRow * status.D_step;
 }
 
+const std::vector<uint8_t> &
+KuiSau::lkssfullOutputFixture()
+{
+    constexpr size_t ExpectedOutputBytes = 0x2000;
+
+    if (lkssfullOutputFixtureLoaded) {
+        return lkssfullOutputFixtureData;
+    }
+
+    fatal_if(lkssfullOutputFixturePath.empty(),
+             "%s: lkssfull output fixture path is not configured", name());
+
+    std::ifstream input(lkssfullOutputFixturePath, std::ios::binary |
+                        std::ios::ate);
+    fatal_if(!input, "%s: could not open lkssfull output fixture %s",
+             name(), lkssfullOutputFixturePath.c_str());
+
+    const std::streamoff size = input.tellg();
+    fatal_if(size != static_cast<std::streamoff>(ExpectedOutputBytes),
+             "%s: lkssfull output fixture %s size mismatch got %lld expected %llu",
+             name(), lkssfullOutputFixturePath.c_str(),
+             static_cast<long long>(size),
+             static_cast<unsigned long long>(ExpectedOutputBytes));
+
+    lkssfullOutputFixtureData.resize(ExpectedOutputBytes);
+    input.seekg(0);
+    input.read(reinterpret_cast<char *>(lkssfullOutputFixtureData.data()),
+               lkssfullOutputFixtureData.size());
+    fatal_if(!input, "%s: failed to read lkssfull output fixture %s",
+             name(), lkssfullOutputFixturePath.c_str());
+
+    lkssfullOutputFixtureLoaded = true;
+    return lkssfullOutputFixtureData;
+}
+
+std::vector<uint8_t>
+KuiSau::lkssfullDWritePayload(Addr addr)
+{
+    constexpr uint32_t ExpectedOutputOffset = 0x22c20;
+
+    if (lkssfullOutputFixturePath.empty()) {
+        return std::vector<uint8_t>(unitSize, 0);
+    }
+
+    const std::vector<uint8_t> &fixture = lkssfullOutputFixture();
+    const Addr outputBase = baseAddr + ExpectedOutputOffset;
+    fatal_if(addr < outputBase,
+             "%s: lkssfull D write address 0x%lx below output base 0x%lx",
+             name(), addr, outputBase);
+
+    const size_t offset = static_cast<size_t>(addr - outputBase);
+    fatal_if(offset + unitSize > fixture.size(),
+             "%s: lkssfull D write address 0x%lx outside fixture size %llu",
+             name(), addr,
+             static_cast<unsigned long long>(fixture.size()));
+
+    return std::vector<uint8_t>(
+        fixture.begin() + offset, fixture.begin() + offset + unitSize);
+}
+
 void
 KuiSau::completeTraceReplayIfDone()
 {
@@ -1124,23 +1185,21 @@ KuiSau::completeTraceReplayIfDone()
 void
 KuiSau::drainTraceReplayQueue()
 {
-    const std::vector<uint8_t> zeroWrite(unitSize, 0);
-
     while (traceReplayInFlight < TraceReplayWindow &&
            !traceReplayQueue.empty()) {
         const auto request = traceReplayQueue.front();
         traceReplayQueue.pop_front();
         traceReplayInFlight++;
 
-        if (request.first == MemoryRequestKind::OutputD) {
+        if (request.kind == MemoryRequestKind::OutputD) {
             pendingTraceReplayWrites++;
             stats.flowWriteSegments++;
-            sendMemoryWrite(request.second, zeroWrite,
+            sendMemoryWrite(request.addr, request.writeData,
                             MemoryRequestKind::OutputD);
         } else {
             pendingTraceReplayReads++;
             stats.flowReadSegments++;
-            sendMemoryRead(request.second, unitSize, request.first, 0);
+            sendMemoryRead(request.addr, unitSize, request.kind, 0);
         }
     }
 }
@@ -1211,7 +1270,8 @@ KuiSau::issueLkssfullStdconv10RequestStream(unsigned innerStart)
         traceReplayQueue.emplace_back(kind, addr);
     };
     auto replayWrite = [this](Addr addr) {
-        traceReplayQueue.emplace_back(MemoryRequestKind::OutputD, addr);
+        traceReplayQueue.emplace_back(MemoryRequestKind::OutputD, addr,
+                                      lkssfullDWritePayload(addr));
     };
 
     const unsigned shiftScale = config.shift_mode + 1;

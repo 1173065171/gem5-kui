@@ -842,24 +842,31 @@ The first gem5-side fixture scheduler regression now loads those runtime blobs.
 the output heap, and then issues the 16 captured CSR starts. The tutorial config
 is
 `configs/tutorial/part1/kui_sau_lkssfull_stdconv_fixture_scheduler_test.py`.
+`KuiSau.lkssfull_output_fixture` can point at `output_expected.bin`; in that
+mode, the lkssfull path writes the captured 16-byte D payload slice for each
+output address and `SauGoldenGen` reads back the full 8192-byte output heap.
 Verified checkpoint:
 
 ```sh
 python3 util/sau_lkssfull_fixture_data.py --dump-runtime-dir build/sau_lkssfull_runtime_fixture
-python3 -m py_compile src/sau/SauGoldenGen.py configs/tutorial/part1/kui_sau_lkssfull_stdconv_fixture_scheduler_test.py util/sau_lkssfull_fixture_data.py
+python3 -m py_compile src/sau/KuiSau.py src/sau/SauGoldenGen.py configs/tutorial/part1/kui_sau_lkssfull_stdconv_fixture_scheduler_test.py util/sau_lkssfull_fixture_data.py
 docker exec -w /gem5/gem5-kui gem5-dev scons build/RISCV/gem5.opt -j2
 docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_lkssfull_stdconv_fixture_scheduler ./configs/tutorial/part1/kui_sau_lkssfull_stdconv_fixture_scheduler_test.py
 python3 util/sau_trace_summary.py --case lkssfull_sau_stdconv_10 --gem5-stats m5out/sau_lkssfull_stdconv_fixture_scheduler/stats.txt
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_lkssfull_stdconv_trace ./configs/tutorial/part1/kui_sau_lkssfull_stdconv_trace_test.py
+python3 util/sau_trace_summary.py --case lkssfull_sau_stdconv_10 --gem5-stats m5out/sau_lkssfull_stdconv_trace/stats.txt
 ```
 
 The checker reports all A/B/C/D request counts, first/last addresses, sum/xor
 summaries, total request count, and `flowTraceOrderHash=8164653382730703` as
-OK. This is still an address/order proof with real fixture data loaded, not a
-functional D-output proof.
+OK for both fixture scheduler and trace-only runs. The fixture scheduler run
+also prints `D output matches SAU.py-derived
+lkssfull_sau_stdconv_10_fixture_trace vector`. This is still oracle-backed
+payload replay, not a functional stdconv16 compute proof.
 
 ## Current Next Actions
 
-1. Replace the lkssfull zero-write replay plumbing with real functional
+1. Replace the lkssfull oracle-backed D payload replay with real functional
    compute/writeback, using `output_expected.bin`, the trace payload hashes, and
    sorted `output_sa` coverage as regression anchors.
 2. Produce or capture RTL `mem_addr.sv` traces for the RTL-gated representative

@@ -1209,9 +1209,9 @@ Latest continuation slice:
   segments; D maps to 512 output segments. Sorting the D chunks by address gives
   one contiguous 8192-byte span that matches `output_sa` exactly with SHA256
   `e1b19a4576eb5bf9a299a9f4944444f71c8ba2b5dbab8b1a9223286f2a8877f2`.
-- This is a data-layout proof for the RTL trace, not yet a gem5 functional
-  D-output proof. `KuiSau::issueLkssfullStdconv10RequestStream()` still uses
-  trace-replay drain plumbing and zero D writes.
+- This is a data-layout proof for the RTL trace. The current gem5 lkssfull
+  path can replay D payloads from `output_expected.bin`, but it is still
+  oracle-backed trace plumbing rather than functional compute.
 - Confirmed `gem5-dev` cannot access the host external testcase path under
   `/home/zbn/code/npu_lpnpu/...`, so gem5-side regression work needs repo-local
   fixture data or generated data. Added `--dump-runtime-dir` to materialize
@@ -1232,7 +1232,7 @@ sha256sum /tmp/sau_lkssfull_runtime_fixture/*.bin
 
 Next best code step:
 
-1. Replace the lkssfull zero-write replay plumbing with real functional
+1. Replace the lkssfull oracle-backed D payload replay with real functional
    compute/writeback, using the trace payload hashes and sorted `output_sa`
    coverage as regression anchors.
 2. Keep `sau_trace_summary.py` for address/order equivalence while using
@@ -1268,18 +1268,61 @@ python3 util/sau_trace_summary.py --case lkssfull_sau_stdconv_10 --gem5-stats m5
 
 The summary checker reports all A/B/C/D request counts, first/last addresses,
 sum/xor summaries, total request count, and `flowTraceOrderHash=8164653382730703`
-as OK. This remains an address/order regression with real heap input data
-loaded; it is not yet a functional D-output proof.
+as OK. This was an address/order regression with real heap input data loaded;
+the next slice added oracle-backed D payload replay and a full output readback.
 
 Next best code step:
 
-1. Replace the lkssfull zero-write replay plumbing with real functional
+1. Replace the lkssfull oracle-backed D payload replay with real functional
    compute/writeback, using `output_expected.bin` plus the trace payload hashes
    as regression anchors.
-2. Add a gem5 memory read/check action for the sorted 8192-byte D oracle once
-   the functional writeback path is producing bytes.
+2. Keep the 8192-byte D readback check as the regression gate while making the
+   writeback data come from computation instead of the output oracle.
 3. Keep generated fixture blobs out of git unless we intentionally add a small,
    license-safe regression fixture.
+
+Latest continuation slice:
+
+- Replaced lkssfull trace replay's hard-coded zero D writes with optional
+  oracle-backed payload replay. `KuiSau.lkssfull_output_fixture` points at
+  `output_expected.bin`; each D write slices 16 bytes from that file by absolute
+  output address. If the parameter is empty, trace-only replay keeps the old
+  zero-payload behavior for address-only checks.
+- Extended `SauGoldenGen(test_case="lkssfull_sau_stdconv_10_fixture_trace")`
+  to read back the full 8192-byte output heap after all 16 CSR starts and
+  compare it against `output_expected.bin`.
+- Updated
+  `configs/tutorial/part1/kui_sau_lkssfull_stdconv_fixture_scheduler_test.py`
+  to configure `lkssfull_output_fixture` and document that this is payload
+  replay, not functional compute.
+- Verified commands:
+
+```sh
+python3 util/sau_lkssfull_fixture_data.py --dump-runtime-dir build/sau_lkssfull_runtime_fixture
+python3 -m py_compile src/sau/KuiSau.py src/sau/SauGoldenGen.py configs/tutorial/part1/kui_sau_lkssfull_stdconv_fixture_scheduler_test.py util/sau_lkssfull_fixture_data.py
+git diff --check -- . ':(exclude)src/sau/reference'
+docker exec -w /gem5/gem5-kui gem5-dev scons build/RISCV/gem5.opt -j2
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_lkssfull_stdconv_fixture_scheduler ./configs/tutorial/part1/kui_sau_lkssfull_stdconv_fixture_scheduler_test.py
+python3 util/sau_trace_summary.py --case lkssfull_sau_stdconv_10 --gem5-stats m5out/sau_lkssfull_stdconv_fixture_scheduler/stats.txt
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_lkssfull_stdconv_trace ./configs/tutorial/part1/kui_sau_lkssfull_stdconv_trace_test.py
+python3 util/sau_trace_summary.py --case lkssfull_sau_stdconv_10 --gem5-stats m5out/sau_lkssfull_stdconv_trace/stats.txt
+```
+
+The fixture scheduler run prints
+`D output matches SAU.py-derived lkssfull_sau_stdconv_10_fixture_trace vector`.
+Both fixture scheduler and trace-only stats still match the expected
+`flowTraceOrderHash=8164653382730703`.
+
+Next best code step:
+
+1. Replace oracle-backed lkssfull D payload replay with actual stdconv16
+   functional compute/writeback.
+2. Use the existing 8192-byte readback and address/order summary checks as
+   hard regression gates while doing that replacement.
+3. Investigate whether the relevant firmware source for
+   `normconv_s16_16bPsS_PaS_iiiiiii` is generated outside the current
+   `kuiloong-NN` source tree; `tests/7_sau/main.cpp` has related 16b coverage
+   but not the exact external testcase dimensions.
 
 ## Known Local State
 

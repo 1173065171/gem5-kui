@@ -625,6 +625,7 @@ SauGoldenGen::buildScript()
     bool retainSequence = false;
     bool useDefaultMemoryScript = true;
     bool useLkssfullTraceStarts = false;
+    bool checkLkssfullOutput = false;
 
     if (testCase == "gemm") {
         // This vector is intentionally simple but still exercises the SAU.py
@@ -935,9 +936,11 @@ SauGoldenGen::buildScript()
     } else if (testCase == "lkssfull_sau_stdconv_10_fixture_trace") {
         // Data-loaded version of the external RTL smoke case. It writes the
         // firmware runtime heap blobs before issuing the same 16 CSR starts.
-        // The current KuiSau path still validates address/order only.
+        // The current KuiSau path replays D payloads from the same fixture;
+        // this is an oracle-backed trace check, not functional compute yet.
         useDefaultMemoryScript = false;
         useLkssfullTraceStarts = true;
+        checkLkssfullOutput = true;
         actions.push_back({
             ActionType::MemWrite, SauBase + LkssInputOffset,
             readBinaryFile(fixturePath(fixtureDir, "input_heap.bin"),
@@ -1010,6 +1013,14 @@ SauGoldenGen::buildScript()
                 0x0000002c, 0x00000088, 0x00020401, 0x00101209,
                 0x00025030, 0x00024c30 + flow * 0x40,
                 (d_offset << 9) | 0x1, 0x0e525010, false);
+        }
+        if (checkLkssfullOutput) {
+            expectedDReads.push_back(
+                readBinaryFile(fixturePath(fixtureDir, "output_expected.bin"),
+                               LkssOutputBytes));
+            actions.push_back({
+                ActionType::MemReadD, SauBase + LkssOutputOffset, {}, 0,
+                LkssOutputBytes});
         }
         actions.push_back({ActionType::Exit, 0, {}});
     } else {

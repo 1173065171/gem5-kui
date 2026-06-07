@@ -25,3 +25,6 @@ class KuiSau(SimObject):
     trace_replay = Param.String(
         "",
         "Replay a named RTL request trace instead of running the functional scheduler")
+    lkssfull_output_fixture = Param.String(
+        "",
+        "Optional output_expected.bin used as D payloads for lkssfull trace checks")

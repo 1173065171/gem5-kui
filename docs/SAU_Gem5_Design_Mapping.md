@@ -169,8 +169,12 @@ then run
 real input, bias, and kernel heap blobs into gem5 memory, clears the output
 heap, and issues the 16 captured CSR starts through the ordinary scheduler
 matching path. The current check proves request address/order equivalence with
-real fixture data loaded; D bytes are still zero-write plumbing and need the
-next functional conversion step before comparing against `output_expected.bin`.
+real fixture data loaded. `KuiSau.lkssfull_output_fixture` can now point to
+`output_expected.bin`; in that mode the lkssfull trace/scheduler path writes the
+captured D payload slice for each output address and `SauGoldenGen` reads back
+the full 8192-byte output heap. This is an oracle-backed payload replay check,
+not functional compute yet, but it keeps the D oracle wired into gem5 while the
+real stdconv16 compute path is built.
 
 State variables now represented in gem5 and still needing wider validation:
 

@@ -270,6 +270,25 @@ class KuiSau : public SimObject{
 				segmentBytes = 0;
 			}
 		};
+
+		struct TraceReplayRequest
+		{
+			MemoryRequestKind kind;
+			Addr addr;
+			std::vector<uint8_t> writeData;
+
+			TraceReplayRequest(MemoryRequestKind request_kind, Addr request_addr)
+				: kind(request_kind), addr(request_addr)
+			{
+			}
+
+			TraceReplayRequest(MemoryRequestKind request_kind, Addr request_addr,
+			                   std::vector<uint8_t> data)
+				: kind(request_kind), addr(request_addr),
+				  writeData(std::move(data))
+			{
+			}
+		};
 		
 		// ==================== 关键仿真组件 ====================
 		// mem port
@@ -295,7 +314,9 @@ class KuiSau : public SimObject{
 		unsigned pendingTraceReplayWrites = 0;
 		unsigned traceReplayInFlight = 0;
 		static constexpr unsigned TraceReplayWindow = 128;
-		std::deque<std::pair<MemoryRequestKind, Addr>> traceReplayQueue;
+		std::deque<TraceReplayRequest> traceReplayQueue;
+		std::vector<uint8_t> lkssfullOutputFixtureData;
+		bool lkssfullOutputFixtureLoaded = false;
 
 		// clock domain function
 		Tick getClockPeriod() const {
@@ -429,6 +450,8 @@ class KuiSau : public SimObject{
 			void executeTraceReplay();
 			bool isLkssfullStdconv10Config() const;
 			unsigned lkssfullStdconv10InnerStart() const;
+			const std::vector<uint8_t> &lkssfullOutputFixture();
+			std::vector<uint8_t> lkssfullDWritePayload(Addr addr);
 			void issueLkssfullStdconv10RequestStream(unsigned flow);
 			void drainTraceReplayQueue();
 			void completeTraceReplayIfDone();
@@ -448,6 +471,7 @@ class KuiSau : public SimObject{
 			const bool enableRandomTraffic;
 			const bool rtlCReadGate;
 			const std::string traceReplayMode;
+			const std::string lkssfullOutputFixturePath;
 			std::mt19937_64 rng;
 			std::uniform_int_distribution<Addr> addrDist;
 			bool sawTraceReadAAddr = false;
@@ -547,6 +571,7 @@ class KuiSau : public SimObject{
 			enableRandomTraffic(params.enable_random_traffic),
 			rtlCReadGate(params.rtl_c_read_gate),
 			traceReplayMode(params.trace_replay),
+			lkssfullOutputFixturePath(params.lkssfull_output_fixture),
 			rng(rngSeed == 0 ? 0xC001D00Du : rngSeed),
 			addrDist(0, Addr(0x10000 - 1)),
 			stats(this)
@@ -570,6 +595,9 @@ class KuiSau : public SimObject{
 			inform("  Random traffic: %s", enableRandomTraffic ? "enabled" : "disabled");
 			inform("  RTL C-read gate: %s", rtlCReadGate ? "enabled" : "disabled");
 			inform("  Trace replay: %s", traceReplayMode.empty() ? "disabled" : traceReplayMode.c_str());
+			inform("  lkssfull output fixture: %s",
+			       lkssfullOutputFixturePath.empty() ? "disabled" :
+			       lkssfullOutputFixturePath.c_str());
 		}
 
 		// 发送函数
