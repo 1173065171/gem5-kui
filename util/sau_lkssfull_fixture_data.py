@@ -7,8 +7,10 @@ memory, so the line "5f746573" represents bytes "73 65 74 5f".
 """
 
 import argparse
+import csv
 import hashlib
 import json
+from collections import defaultdict
 from pathlib import Path
 
 
@@ -88,6 +90,17 @@ def parse_word_hex(path):
     return bytes(data)
 
 
+def extract_blob(name, addr, size, rodata_base, memory):
+    offset = addr - rodata_base
+    if offset < 0 or offset + size > len(memory):
+        raise SystemExit(
+            f"{name} at 0x{addr:08x} size {size} is outside "
+            f"globala range 0x{rodata_base:08x}.."
+            f"0x{rodata_base + len(memory):08x}"
+        )
+    return memory[offset : offset + size]
+
+
 def heap_layout():
     free_units = HEAP_INITIAL_UNITS
     layout = []
@@ -111,14 +124,7 @@ def heap_layout():
 
 def blob_summary(name, symbol, addr, size, rodata_base, memory):
     offset = addr - rodata_base
-    if offset < 0 or offset + size > len(memory):
-        raise SystemExit(
-            f"{name} at 0x{addr:08x} size {size} is outside "
-            f"globala range 0x{rodata_base:08x}.."
-            f"0x{rodata_base + len(memory):08x}"
-        )
-
-    blob = memory[offset : offset + size]
+    blob = extract_blob(name, addr, size, rodata_base, memory)
     summary = {
         "name": name,
         "symbol": symbol,
@@ -148,7 +154,97 @@ def blob_summary(name, symbol, addr, size, rodata_base, memory):
     return summary
 
 
-def build_summary(case_dir):
+def runtime_ranges(segment_blobs):
+    allocs = {entry["name"]: entry for entry in heap_layout()}
+    return {
+        "input_heap": (allocs["input_heap"]["addr"], segment_blobs["input_sa"]),
+        "bias_heap": (allocs["bias_heap"]["addr"], segment_blobs["bias_sa"]),
+        "kernel_heap": (allocs["kernel_heap"]["addr"], segment_blobs["kernel_sa"]),
+        "output_heap": (allocs["output_heap"]["addr"], segment_blobs["output_sa"]),
+    }
+
+
+def read_range(ranges, addr, size):
+    for name, (start, blob) in ranges:
+        offset = addr - start
+        if 0 <= offset and offset + size <= len(blob):
+            return name, blob[offset : offset + size]
+    return None, None
+
+
+def summarize_trace_data(trace_path, segment_blobs):
+    ranges = runtime_ranges(segment_blobs)
+    read_ranges = [
+        ("input_heap", ranges["input_heap"]),
+        ("kernel_heap", ranges["kernel_heap"]),
+        ("bias_heap", ranges["bias_heap"]),
+    ]
+    write_ranges = [("output_heap", ranges["output_heap"])]
+    payloads = {kind: bytearray() for kind in "ABCD"}
+    sources = defaultdict(int)
+    missing = []
+    d_chunks = []
+
+    with trace_path.open(encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        for lineno, row in enumerate(reader, 2):
+            try:
+                kind = row["kind"].strip().upper()
+                addr = int(row["addr"], 0)
+            except (KeyError, ValueError) as exc:
+                raise SystemExit(f"{trace_path}:{lineno}: bad trace row") from exc
+            if kind not in payloads:
+                raise SystemExit(
+                    f"{trace_path}:{lineno}: unsupported trace kind {kind!r}"
+                )
+
+            source, payload = read_range(
+                write_ranges if kind == "D" else read_ranges, addr, 16
+            )
+            if payload is None:
+                missing.append({"line": lineno, "kind": kind, "addr": addr})
+                continue
+
+            payloads[kind].extend(payload)
+            sources[f"{kind}:{source}"] += 1
+            if kind == "D":
+                d_chunks.append((addr, payload))
+
+    trace_data = {
+        "trace": str(trace_path),
+        "missing": missing,
+        "sources": dict(sorted(sources.items())),
+        "kinds": {},
+    }
+    for kind, payload in payloads.items():
+        trace_data["kinds"][kind] = {
+            "segments": len(payload) // 16,
+            "bytes": len(payload),
+            "sha256": hashlib.sha256(bytes(payload)).hexdigest(),
+        }
+
+    sorted_chunks = sorted(d_chunks)
+    sorted_payload = bytearray()
+    contiguous = True
+    expected_addr = None
+    for addr, payload in sorted_chunks:
+        if expected_addr is not None and addr != expected_addr:
+            contiguous = False
+        sorted_payload.extend(payload)
+        expected_addr = addr + len(payload)
+
+    trace_data["d_sorted"] = {
+        "segments": len(sorted_chunks),
+        "unique_addresses": len({addr for addr, _payload in sorted_chunks}),
+        "bytes": len(sorted_payload),
+        "contiguous": contiguous,
+        "sha256": hashlib.sha256(bytes(sorted_payload)).hexdigest(),
+        "matches_output_sa": bytes(sorted_payload) == segment_blobs["output_sa"],
+    }
+    return trace_data
+
+
+def build_summary(case_dir, rtl_trace=None):
     symbol_path = case_dir / "elf_symbols.txt"
     memory_path = case_dir / "globala.hex"
     if not symbol_path.is_file():
@@ -161,11 +257,13 @@ def build_summary(case_dir):
     memory = parse_word_hex(memory_path)
 
     segments = []
+    segment_blobs = {}
     for name, size in SEGMENT_SIZES.items():
         symbol, addr = find_symbol(symbols, SYMBOL_SUFFIXES[name])
+        segment_blobs[name] = extract_blob(name, addr, size, rodata_base, memory)
         segments.append(blob_summary(name, symbol, addr, size, rodata_base, memory))
 
-    return {
+    summary = {
         "case_dir": str(case_dir),
         "memory_file": str(memory_path),
         "rodata_base": rodata_base,
@@ -173,6 +271,9 @@ def build_summary(case_dir):
         "segments": segments,
         "heap_layout": heap_layout(),
     }
+    if rtl_trace is not None:
+        summary["rtl_trace_data"] = summarize_trace_data(rtl_trace, segment_blobs)
+    return summary
 
 
 def print_text(summary):
@@ -207,6 +308,30 @@ def print_text(summary):
             f"addr=0x{alloc['addr']:08x} "
             f"low20=0x{alloc['low20']:05x}"
         )
+    if "rtl_trace_data" in summary:
+        trace_data = summary["rtl_trace_data"]
+        print(f"rtl_trace_data: {trace_data['trace']}")
+        for kind in "ABCD":
+            data = trace_data["kinds"][kind]
+            print(
+                f"  {kind}: segments={data['segments']} "
+                f"bytes={data['bytes']} sha256={data['sha256']}"
+            )
+        print("  sources:")
+        for source, count in trace_data["sources"].items():
+            print(f"    {source}: {count}")
+        sorted_d = trace_data["d_sorted"]
+        print(
+            "  d_sorted: "
+            f"segments={sorted_d['segments']} "
+            f"unique={sorted_d['unique_addresses']} "
+            f"bytes={sorted_d['bytes']} "
+            f"contiguous={sorted_d['contiguous']} "
+            f"matches_output_sa={sorted_d['matches_output_sa']} "
+            f"sha256={sorted_d['sha256']}"
+        )
+        if trace_data["missing"]:
+            print(f"  missing_payloads={len(trace_data['missing'])}")
 
 
 def main():
@@ -222,9 +347,14 @@ def main():
         action="store_true",
         help="print machine-readable JSON instead of text",
     )
+    parser.add_argument(
+        "--rtl-trace",
+        type=Path,
+        help="optional RTL sau_mem_addr_trace.csv to summarize payload data",
+    )
     args = parser.parse_args()
 
-    summary = build_summary(args.case_dir)
+    summary = build_summary(args.case_dir, args.rtl_trace)
     if args.json:
         print(json.dumps(summary, indent=2, sort_keys=True))
     else:

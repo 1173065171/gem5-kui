@@ -150,6 +150,13 @@ semantic object names: the traced B/horizontal stream starts at the input
 buffer, the traced A/vertical reuse window starts at the kernel buffer, and the
 C/bias read pair is `0x20025010/0x20025030`. Keep this role mapping explicit
 when converting the trace-aligned path into a functional D-data test.
+`util/sau_lkssfull_fixture_data.py --rtl-trace ...` now verifies that the
+captured trace's payloads are fully covered by the reconstructed runtime image:
+B reads 992 input segments; A reads 2000 kernel segments, 16 input-tail
+segments, and 16 bias segments; C reads 16 kernel-tail segments and 16 bias
+segments. The 512 D chunks cover the output heap contiguously when sorted by
+address, matching `output_sa` exactly. This gives a precise data-layout oracle
+for the next gem5 functional model step.
 
 State variables now represented in gem5 and still needing wider validation:
 

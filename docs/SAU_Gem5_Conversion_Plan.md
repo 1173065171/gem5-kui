@@ -794,6 +794,32 @@ the kernel buffer (`0x20024c30`), the late A read reaches the input tail
 modeling work is to reproduce that firmware/RTL data layout in gem5 before
 using `output_sa` as a functional D-data check.
 
+With `--rtl-trace`, the same helper now reconstructs the payload stream behind
+the captured RTL request trace:
+
+```sh
+python3 util/sau_lkssfull_fixture_data.py \
+  --rtl-trace /home/zbn/code/npu_lpnpu/sim/vcs/build/mikui_dma/sau_mem_addr_trace.csv
+```
+
+All 3568 traced 16-byte payloads are covered by the reconstructed runtime heap
+or expected output image. The trace-order payload hashes are:
+
+- A: 2032 segments, SHA256
+  `4925a011215b0e1b3038aa0ed772cc229dd62155117a9eb5fcbdf54a31cf4471`.
+- B: 992 segments, SHA256
+  `8e1153025965a8a2ed55b48a4dbec868b6a285e4cbf36b56f4c967db715d34e0`.
+- C: 32 segments, SHA256
+  `10ce3e2d1b1082473391ce173bae7cb9202af0a2df8a699acee53d950836dd92`.
+- D: 512 segments in trace order, SHA256
+  `d2831860c6b5914d18fb2d1ac18a6935fd934dfa95fe1c3eade4acad847db750`.
+
+The D chunks have 512 unique addresses, form one contiguous 8192-byte span when
+sorted by address, and that sorted span matches `output_sa` exactly with SHA256
+`e1b19a4576eb5bf9a299a9f4944444f71c8ba2b5dbab8b1a9223286f2a8877f2`.
+This is a data-layout proof for the RTL trace, not yet a gem5 functional-output
+proof.
+
 ## Current Next Actions
 
 1. Keep the trace replay and CSR-derived scheduler path as regression anchors

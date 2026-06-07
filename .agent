@@ -1184,6 +1184,47 @@ Next best code step:
    memory layout is reproduced in gem5.
 3. Tighten `D_wstrb` behavior for unit-size 8 and remaining shift/dequant modes.
 
+Latest continuation slice:
+
+- Extended `util/sau_lkssfull_fixture_data.py` with `--rtl-trace` payload
+  reconstruction. It combines `globala.hex` rodata blobs with the derived heap
+  layout and then reads each 16-byte RTL trace event from the matching runtime
+  image; D events are checked against the expected `output_sa` image.
+- Verified against
+  `/home/zbn/code/npu_lpnpu/sim/vcs/build/mikui_dma/sau_mem_addr_trace.csv`.
+  All 3568 traced payloads are covered. Trace-order payload hashes:
+  A `4925a011215b0e1b3038aa0ed772cc229dd62155117a9eb5fcbdf54a31cf4471`,
+  B `8e1153025965a8a2ed55b48a4dbec868b6a285e4cbf36b56f4c967db715d34e0`,
+  C `10ce3e2d1b1082473391ce173bae7cb9202af0a2df8a699acee53d950836dd92`,
+  D `d2831860c6b5914d18fb2d1ac18a6935fd934dfa95fe1c3eade4acad847db750`.
+- Source distribution from the traced request tags:
+  B reads 992 input segments; A reads 2000 kernel segments, 16 input-tail
+  segments, and 16 bias segments; C reads 16 kernel-tail segments and 16 bias
+  segments; D maps to 512 output segments. Sorting the D chunks by address gives
+  one contiguous 8192-byte span that matches `output_sa` exactly with SHA256
+  `e1b19a4576eb5bf9a299a9f4944444f71c8ba2b5dbab8b1a9223286f2a8877f2`.
+- This is a data-layout proof for the RTL trace, not yet a gem5 functional
+  D-output proof. `KuiSau::issueLkssfullStdconv10RequestStream()` still uses
+  trace-replay drain plumbing and zero D writes.
+- Verified commands:
+
+```sh
+python3 -m py_compile util/sau_lkssfull_fixture_data.py
+python3 util/sau_lkssfull_fixture_data.py
+python3 util/sau_lkssfull_fixture_data.py --rtl-trace /home/zbn/code/npu_lpnpu/sim/vcs/build/mikui_dma/sau_mem_addr_trace.csv
+python3 util/sau_lkssfull_fixture_data.py --rtl-trace /home/zbn/code/npu_lpnpu/sim/vcs/build/mikui_dma/sau_mem_addr_trace.csv --json
+```
+
+Next best code step:
+
+1. Add a gem5-side stdconv fixture loader that writes reconstructed
+   input/bias/kernel heap buffers to their runtime addresses.
+2. Replace the lkssfull zero-write replay plumbing with real functional
+   compute/writeback, using the trace payload hashes and sorted `output_sa`
+   coverage as regression anchors.
+3. Keep `sau_trace_summary.py` for address/order equivalence while using
+   `sau_lkssfull_fixture_data.py` for data-layout equivalence.
+
 ## Known Local State
 
 - `docs/my_gem5.md` contains the current gem5 test record.
