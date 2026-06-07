@@ -415,6 +415,7 @@ class KuiSau : public SimObject{
 		 */
 		void sendMemoryWrite(Addr addr, const std::vector<uint8_t> &data,
 		                     MemoryRequestKind kind);
+		Addr outputWriteAddress(size_t packedRow) const;
 		
 		/**
 		 * SAU执行流程的主循环

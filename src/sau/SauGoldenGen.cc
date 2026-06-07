@@ -25,6 +25,7 @@ constexpr unsigned UnitSize = 16;
 constexpr size_t MatrixBytes = UnitSize * UnitSize;
 constexpr size_t ShiftMatrixBytes = MatrixBytes * 2;
 constexpr size_t CBytes = UnitSize * 2;
+constexpr uint32_t ShiftPairDIns2Lsb = 0x00020201;
 
 std::vector<uint8_t>
 makeZeroBytes(size_t size = MatrixBytes)
@@ -680,7 +681,7 @@ SauGoldenGen::buildScript()
         expectedD = makeNormalConvStrideShiftExpectedD();
         writeC = true;
         ins1Lsb = (2u << 2) | (1u << 4) | (1u << 5);
-        ins2Lsb = 0x00010201;
+        ins2Lsb = ShiftPairDIns2Lsb;
         ins4Msb = COffset | (2u << 24);
     } else if (testCase == "normal_conv_stride_shift_dequant_mixed") {
         // This composes stride=1, shift_mode=1, and work_mode=2/cutbit=2.
@@ -695,7 +696,7 @@ SauGoldenGen::buildScript()
         writeC = true;
         ins1Lsb = (2u << 2) | (1u << 4) | (1u << 5);
         ins1Msb = 2u << 2;
-        ins2Lsb = 0x00010201;
+        ins2Lsb = ShiftPairDIns2Lsb;
         ins4Msb = COffset | (2u << 20) | (2u << 24);
     } else if (testCase == "normal_conv_shift") {
         // This keeps the normal-conv one-hot A setup but enables
@@ -708,7 +709,7 @@ SauGoldenGen::buildScript()
         expectedD = makeNormalConvShiftExpectedD();
         writeC = true;
         ins1Lsb = (2u << 2) | (1u << 5);
-        ins2Lsb = 0x00010201;
+        ins2Lsb = ShiftPairDIns2Lsb;
         ins4Msb = COffset | (2u << 24);
     } else if (testCase == "normal_conv_dequant_mixed") {
         // This extends the normal-conv staging vector with work_mode=2 and
@@ -780,7 +781,7 @@ SauGoldenGen::buildScript()
         expectedD = makeDepthwiseConvStrideShiftExpectedD();
         writeC = true;
         ins1Lsb = 2u | (2u << 2) | (1u << 4) | (1u << 5);
-        ins2Lsb = 0x00010201;
+        ins2Lsb = ShiftPairDIns2Lsb;
         ins4Msb = COffset | (2u << 24);
     } else if (testCase == "depthwise_conv_stride_shift_dequant_mixed") {
         // Compose stride=1, shift_mode=1, work_mode=2/cutbit=2, and the DW
@@ -794,7 +795,7 @@ SauGoldenGen::buildScript()
         writeC = true;
         ins1Lsb = 2u | (2u << 2) | (1u << 4) | (1u << 5);
         ins1Msb = 2u << 2;
-        ins2Lsb = 0x00010201;
+        ins2Lsb = ShiftPairDIns2Lsb;
         ins4Msb = COffset | (2u << 20) | (2u << 24);
     } else if (testCase == "depthwise_conv_shift") {
         // register_mode=2 applies the DW B-column mask while shift_mode=1
@@ -806,7 +807,7 @@ SauGoldenGen::buildScript()
         expectedD = makeDepthwiseConvShiftExpectedD();
         writeC = true;
         ins1Lsb = 2u | (2u << 2) | (1u << 5);
-        ins2Lsb = 0x00010201;
+        ins2Lsb = ShiftPairDIns2Lsb;
         ins4Msb = COffset | (2u << 24);
     } else if (testCase == "depthwise_conv_dequant_mixed") {
         // This extends the DW mask vector with work_mode=2 and cutbit=2. The
@@ -871,7 +872,7 @@ SauGoldenGen::buildScript()
         aBytes = makeShiftABytes();
         expectedD = makeShiftExpectedD();
         ins1Lsb = 1u << 5;
-        ins2Lsb = 0x00010201;
+        ins2Lsb = ShiftPairDIns2Lsb;
         ins4Msb = 0x02000000;
     } else if (testCase == "gemm_dequant_int16") {
         // This reuses the shift-mode int16 identity layout and adds cutbit=2.
@@ -883,7 +884,7 @@ SauGoldenGen::buildScript()
         expectedD = makeShiftDequantExpectedD();
         ins1Lsb = 1u << 5;
         ins1Msb = 2u << 2;
-        ins2Lsb = 0x00010201;
+        ins2Lsb = ShiftPairDIns2Lsb;
         ins4Msb = 0x02000000;
     } else if (testCase == "lkssfull_sau_stdconv_10_trace") {
         // Trace-only driver for the external RTL smoke case. This emits the

@@ -126,9 +126,10 @@ plus `D + row*0x200 + 0x10`. The shared
 fixture fields. It is reachable both from
 `KuiSau(trace_replay="lkssfull_sau_stdconv_10")` and from ordinary
 `executeFlow()` when the CSR shape matches `isLkssfullStdconv10Config()`. The
-general gem5 functional scheduler still needs conv-reuse B/A request ordering,
-shift-mode D pair-write behavior, and functional D-data checking for this
-larger stdconv16 case.
+general gem5 functional scheduler now uses the same 16-lane shift-mode output
+address shape, `D + logical_row*D_step + lane*unitSize`; it still needs
+conv-reuse B/A request ordering, unit-size 8 write-mask tightening, and
+functional D-data checking for this larger stdconv16 case.
 
 State variables now represented in gem5 and still needing wider validation:
 

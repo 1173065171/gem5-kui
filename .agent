@@ -1101,6 +1101,44 @@ Next best code step:
 2. Add shift-mode D pair-write shape to the general functional scheduler.
 3. Reduce the noisy per-response logging once the address-order path is stable.
 
+Latest continuation slice:
+
+- Added `KuiSau::outputWriteAddress()` and routed normal functional writeback
+  through it. For 16-lane `shift_mode=1`, packed rows now map to
+  `D + logical_row*D_step + lane*unitSize`, matching the pair-write shape used
+  by the captured RTL stdconv stream.
+- Updated shift-mode golden CSR setup in `SauGoldenGen` to use
+  `D_xstep=2` (`ins2_lsb=0x00020201`) for the 512-byte int16 output cases, so
+  the ordinary functional scheduler exercises the pair-write shape while D
+  reads remain contiguous.
+- Verified after the change:
+
+```sh
+git diff --check -- . ':(exclude)src/sau/reference'
+docker exec -w /gem5/gem5-kui gem5-dev scons build/RISCV/gem5.opt -j2
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_pair_gemm_shift ./configs/tutorial/part1/kui_sau_golden_shift_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_pair_normal_conv_shift ./configs/tutorial/part1/kui_sau_golden_normal_conv_shift_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_pair_normal_conv_stride_shift ./configs/tutorial/part1/kui_sau_golden_normal_conv_stride_shift_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_pair_depthwise_conv_stride_shift ./configs/tutorial/part1/kui_sau_golden_depthwise_conv_stride_shift_test.py
+python3 util/sau_trace_summary.py --case gemm_shift --gem5-stats m5out/sau_pair_gemm_shift/stats.txt
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_pair_gemm_dequant_int16 ./configs/tutorial/part1/kui_sau_golden_dequant_int16_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_pair_normal_conv_stride_shift_dequant ./configs/tutorial/part1/kui_sau_golden_normal_conv_stride_shift_dequant_mixed_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_pair_depthwise_conv_stride_shift_dequant ./configs/tutorial/part1/kui_sau_golden_depthwise_conv_stride_shift_dequant_mixed_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_pair_lkssfull_stdconv_scheduler ./configs/tutorial/part1/kui_sau_lkssfull_stdconv_scheduler_test.py
+docker exec -w /gem5/gem5-kui gem5-dev ./build/RISCV/gem5.opt --outdir=m5out/sau_pair_normal_conv_stride ./configs/tutorial/part1/kui_sau_golden_normal_conv_stride_test.py
+python3 util/sau_trace_summary.py --case lkssfull_sau_stdconv_10 --gem5-stats m5out/sau_pair_lkssfull_stdconv_scheduler/stats.txt
+```
+
+All listed gem5 runs exit with code 0. `gemm_shift` address summaries remain
+OK, and the stdconv scheduler checker still matches
+`flowTraceOrderHash=8164653382730703`.
+
+Next best code step:
+
+1. Add full functional D-data checking for the firmware-derived stdconv16 case.
+2. Tighten `D_wstrb` behavior for unit-size 8 and remaining shift/dequant modes.
+3. Reduce the noisy per-response logging once the address-order path is stable.
+
 ## Known Local State
 
 - `docs/my_gem5.md` contains the current gem5 test record.

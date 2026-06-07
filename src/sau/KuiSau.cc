@@ -1090,6 +1090,19 @@ KuiSau::sendMemoryWrite(Addr addr, const std::vector<uint8_t> &data,
     port_KuiSau_sendto_mem.sendPacket(pkt);
 }
 
+Addr
+KuiSau::outputWriteAddress(size_t packedRow) const
+{
+    if (config.shift_mode == 1 && unitSize == 16 && status.D_kernel > 1) {
+        const size_t logicalRow = packedRow / status.D_kernel;
+        const size_t lane = packedRow % status.D_kernel;
+        return status.D_address + logicalRow * status.D_step +
+            lane * unitSize;
+    }
+
+    return status.D_address + packedRow * status.D_step;
+}
+
 void
 KuiSau::completeTraceReplayIfDone()
 {
@@ -1417,7 +1430,7 @@ KuiSau::processFlowData()
                 continue;
             }
 
-            const Addr addr = status.D_address + row * status.D_step;
+            const Addr addr = outputWriteAddress(row);
             pendingFlowWrites++;
             stats.flowWriteSegments++;
             sendMemoryWrite(addr, output_data, MemoryRequestKind::OutputD);

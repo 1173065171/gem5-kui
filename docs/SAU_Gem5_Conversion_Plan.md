@@ -731,9 +731,10 @@ shape: CSR `B=0x25030` turns into first B request `0x20025060 + n*0x40`, CSR
 `0x20026c00 + n*0x40`, the following A reuse reads stay based at
 `0x20024c30`, C reads stay at `0x20025010/0x20025030`, and D writes use two
 16-byte rows per output row (`D + row*0x200`, `D + row*0x200 + 0x10`). The
-general functional scheduler still writes only
-`status.D_address + row * status.D_step`, so shift-mode D write pairing remains
-a real conversion gap outside this fixture-specific stream.
+general 16-lane functional scheduler now maps shift-mode packed output rows to
+`D + logical_row*D_step + lane*unitSize`; the remaining writeback gaps are
+unit-size 8 masking and full D-data checking for this large firmware-derived
+stdconv case.
 
 Verified commands:
 
@@ -765,24 +766,22 @@ Firmware clues from the testcase:
 1. Keep the trace replay and CSR-derived scheduler path as regression anchors
    while adding functional D-data
    checking for this firmware-derived stdconv case.
-2. Add shift-mode D pair writes to the normal functional scheduler:
-   `D + row*step` and `D + row*step + unitSize`.
-3. Produce or capture RTL `mem_addr.sv` traces for the RTL-gated representative
+2. Produce or capture RTL `mem_addr.sv` traces for the RTL-gated representative
    CSR vectors as CSV/text, then compare per-kind first/last/sum/xor summaries
    while accounting for RTL horizontal=B and vertical=A naming.
-4. Compare global request ordering with `flowTraceOrderHash` after converting
+3. Compare global request ordering with `flowTraceOrderHash` after converting
    the RTL trace into the same request-kind/address token stream; the checker
    already computes that token stream, and the trace replay now proves the hash
    path can match exact RTL order.
-5. Decide whether to keep individual gem5 read/write segments or merge adjacent
+4. Decide whether to keep individual gem5 read/write segments or merge adjacent
    spans for speed after the RTL trace comparison is understood.
-6. Extend address-summary checks to retain and dequant sequences where multiple
+5. Extend address-summary checks to retain and dequant sequences where multiple
    instructions or C-scaling can change request counts.
-7. Expand golden-reference functional tests for additional shift/dequant
+6. Expand golden-reference functional tests for additional shift/dequant
    variants, especially richer mixed shift+dequant data.
-8. Broaden normal/depthwise convolution vectors beyond the current unit-size 16,
+7. Broaden normal/depthwise convolution vectors beyond the current unit-size 16,
    `conv_kernel=2` cases.
-9. Tighten `D_wstrb` behavior for unit-size 8 and shift/dequant modes.
-10. Finish CSR busy/write-during-processing semantics against RTL `csr.sv`.
-11. Extend the new stats into RTL-informed timing estimates after broader
+8. Tighten `D_wstrb` behavior for unit-size 8 and shift/dequant modes.
+9. Finish CSR busy/write-during-processing semantics against RTL `csr.sv`.
+10. Extend the new stats into RTL-informed timing estimates after broader
    functional output equivalence is covered.
